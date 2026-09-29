@@ -3,6 +3,8 @@ extends Node2D
 
 const Bunny := preload("res://scripts/bunny.gd")
 const Bird := preload("res://scripts/bird.gd")
+const Sfx := preload("res://scripts/sfx.gd")
+const Effects := preload("res://scripts/effects.gd")
 
 const SAVE_PATH := "user://save.cfg"
 const GROUND_VISIBLE := 160.0 # How much ground shows at the start.
@@ -14,14 +16,29 @@ const MAX_DIFFICULTY_HEIGHT := 20000.0 # Height (pixels) where difficulty maxes 
 const BIRD_MIN_SPACING := 90.0
 const BIRD_REACH_EASY := 240.0
 const BIRD_REACH_HARD := 360.0
-const BIRD_EDGE_MARGIN := 50.0
+
+# Difficulty (0 to 1) at which tricky birds start appearing.
+const CROW_START := 0.1 # Score 200
+const GOOSE_START := 0.2 # Score 400
+const GOOSE_KNOCK_SPEED := 900.0
+
+# Landing on different birds in a row builds a combo; bouncing on the same bird
+# again or touching the ground resets it.
+const COMBO_MIN := 3
+const COMBO_POINTS := 2 # Bonus per landing = combo * COMBO_POINTS
 
 var screen_size: Vector2
 var bunny: Bunny
 var camera: Camera2D
+var sfx: Sfx
+var effects: Effects
 var birds: Array = []
 var next_bird_y := -160.0
 var max_height := 0.0
+var bonus_points := 0
+var combo := 0
+var last_bird_id := 0
+var shake := 0.0
 var best_score := 0
 var game_over := false
 var can_restart := false
@@ -42,6 +59,9 @@ func _ready() -> void:
 		Color(0.06, 0.07, 0.2), # Night
 	])
 
+	sfx = Sfx.new()
+	add_child(sfx)
+
 	camera = Camera2D.new()
 	camera.position = Vector2(screen_size.x / 2.0, -screen_size.y / 2.0 + GROUND_VISIBLE)
 	add_child(camera)
@@ -52,6 +72,9 @@ func _ready() -> void:
 	bunny.position = Vector2(screen_size.x / 2.0, -Bunny.FEET)
 	bunny.z_index = 1
 	add_child(bunny)
+
+	effects = Effects.new()
+	add_child(effects)
 
 	_build_hud()
 	_spawn_birds()
@@ -64,6 +87,11 @@ func _ready() -> void:
 			message_label.visible = false)
 
 
+func _process(delta: float) -> void:
+	camera.offset = Vector2(randf_range(-shake, shake), randf_range(-shake, shake))
+	shake = move_toward(shake, 0.0, 40.0 * delta)
+
+
 func _physics_process(delta: float) -> void:
 	if game_over:
 		return
@@ -72,7 +100,7 @@ func _physics_process(delta: float) -> void:
 	var prev_feet := bunny.position.y + Bunny.FEET
 	bunny.step(delta)
 	for bird in birds:
-		bird.step(delta)
+		bird.step(delta, bunny)
 	_check_landing(prev_feet)
 
 	_update_camera()
@@ -95,16 +123,53 @@ func _check_landing(prev_feet: float) -> void:
 	if feet >= 0.0: # Ground
 		bunny.position.y = -Bunny.FEET
 		bunny.bounce()
+		combo = 0
+		sfx.play("thud")
+		effects.dust(Vector2(bunny.position.x, 0))
 		return
 
 	for bird in birds:
-		var top: float = bird.top_y()
-		var close_enough: bool = absf(bunny.position.x - bird.position.x) <= bird.half_width() + Bunny.HALF_WIDTH * 0.5
-		if prev_feet <= top and feet >= top and close_enough:
-			bunny.position.y = top - Bunny.FEET
-			bunny.bounce(bird.bounce_multiplier)
-			bird.hit()
+		var dx := Bunny.wrapped_dx(bunny.position.x, bird.position.x, screen_size.x)
+		var close_enough: bool = absf(dx) <= bird.half_width() + Bunny.HALF_WIDTH * 0.5
+		# Use the bird's previous top too, so birds moving up/down can't slip past the feet.
+		if prev_feet <= bird.prev_top and feet >= bird.top_y() and close_enough:
+			_land_on_bird(bird)
 			return
+
+
+func _land_on_bird(bird: Bird) -> void:
+	bunny.position.y = bird.top_y() - Bunny.FEET
+	bunny.bounce(bird.bounce_multiplier)
+	bird.hit()
+	effects.feathers(Vector2(bunny.position.x, bird.top_y()), bird.wing_color)
+
+	# Combo: different birds in a row.
+	if bird.get_instance_id() == last_bird_id:
+		combo = 1
+	else:
+		combo += 1
+	last_bird_id = bird.get_instance_id()
+	if combo >= COMBO_MIN:
+		var points := combo * COMBO_POINTS
+		bonus_points += points
+		var color := Color(1.0, 0.9, 0.3) if combo < 10 else Color(1.0, 0.5, 0.9)
+		effects.popup(bunny.position + Vector2(0, -70), "x%d  +%d" % [combo, points], color)
+		if combo % 5 == 0:
+			sfx.play("combo")
+
+	# Boing rises in pitch as the combo grows.
+	sfx.play("boing", 1.0 + 0.04 * mini(combo, 15))
+	sfx.play("chirp", randf_range(0.9, 1.15))
+
+	match bird.kind:
+		"hummingbird":
+			sfx.play("super")
+			shake = 10.0
+			effects.popup(bunny.position + Vector2(0, -120), "SUPER!", Color(0.5, 1.0, 0.7), 44)
+		"goose":
+			sfx.play("honk")
+			shake = 6.0
+			bunny.knock(bird.direction * GOOSE_KNOCK_SPEED, 0.35)
 
 
 func _update_camera() -> void:
@@ -125,15 +190,8 @@ func _spawn_birds() -> void:
 
 func _spawn_bird(y: float) -> void:
 	var d := _difficulty()
-	var roll := randf()
-	var kind := "sparrow"
-	if roll < 0.12:
-		kind = "hummingbird"
-	elif roll < 0.12 + lerpf(0.35, 0.1, d):
-		kind = "pigeon"
-
 	var bird := Bird.new()
-	bird.setup(kind, d, screen_size.x)
+	bird.setup(_pick_bird_kind(d), d, screen_size.x)
 	var below: Bird = birds.back() if not birds.is_empty() else null
 	if below:
 		# Flying the same way as the bird below keeps them from drifting apart.
@@ -141,16 +199,36 @@ func _spawn_bird(y: float) -> void:
 			bird.direction = below.direction
 		bird.position = Vector2(_reachable_x(below.position.x, d), y)
 	else:
-		bird.position = Vector2(randf_range(BIRD_EDGE_MARGIN, screen_size.x - BIRD_EDGE_MARGIN), y)
+		bird.position = Vector2(randf_range(0.0, screen_size.x), y)
+	if bird.kind == "crow":
+		bird.dove.connect(sfx.play.bind("caw"))
 	add_child(bird)
 	birds.append(bird)
+
+
+func _pick_bird_kind(d: float) -> String:
+	var weights := {
+		"sparrow": 1.0,
+		"pigeon": lerpf(0.6, 0.15, d),
+		"hummingbird": 0.2,
+		"crow": 0.0 if d < CROW_START else lerpf(0.15, 0.45, d),
+		"goose": 0.0 if d < GOOSE_START else lerpf(0.15, 0.3, d),
+	}
+	var total := 0.0
+	for weight: float in weights.values():
+		total += weight
+	var roll := randf() * total
+	for kind: String in weights:
+		roll -= weights[kind]
+		if roll <= 0.0:
+			return kind
+	return "sparrow"
 
 
 func _reachable_x(from_x: float, difficulty: float) -> float:
 	var reach := lerpf(BIRD_REACH_EASY, BIRD_REACH_HARD, difficulty)
 	var offset := randf_range(BIRD_MIN_SPACING, reach) * (1.0 if randf() < 0.5 else -1.0)
-	var x := fposmod(from_x + offset, screen_size.x)
-	return clampf(x, BIRD_EDGE_MARGIN, screen_size.x - BIRD_EDGE_MARGIN)
+	return fposmod(from_x + offset, screen_size.x)
 
 
 func _remove_offscreen_birds() -> void:
@@ -166,7 +244,7 @@ func _difficulty() -> float:
 
 
 func _score() -> int:
-	return int(max_height / 10.0)
+	return int(max_height / 10.0) + bonus_points
 
 
 func _update_sky() -> void:
@@ -175,6 +253,8 @@ func _update_sky() -> void:
 
 func _end_game() -> void:
 	game_over = true
+	sfx.play("game_over")
+	shake = 12.0
 	var score := _score()
 	var new_best := score > best_score
 	if new_best:
