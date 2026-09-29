@@ -1,0 +1,9 @@
+# Godot 4
+.godot/
+/android/
+*.tmp
+
+# Exported builds
+/build/
+*.apk
+*.aab
