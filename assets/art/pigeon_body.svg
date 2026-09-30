@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="330" height="150" viewBox="-165 -80 330 150">
+  <defs>
+    <clipPath id="body"><ellipse cx="0" cy="4" rx="108" ry="34"/></clipPath>
+  </defs>
+  <!-- Tail with dark tip band -->
+  <path d="M-92,-8 L-160,-18 L-160,16 L-92,16 Z" fill="#6e7689"/>
+  <rect x="-160" y="-18" width="14" height="34" fill="#454b5a"/>
+  <!-- Body -->
+  <ellipse cx="0" cy="4" rx="108" ry="34" fill="#9aa3b5"/>
+  <g clip-path="url(#body)">
+    <ellipse cx="10" cy="34" rx="100" ry="22" fill="#c4cad6"/>
+    <rect x="-110" y="28" width="220" height="20" fill="#000" opacity="0.08"/>
+    <!-- Shimmery neck -->
+    <ellipse cx="84" cy="-4" rx="30" ry="30" fill="#5aa58c"/>
+    <ellipse cx="80" cy="16" rx="26" ry="16" fill="#8b6bb3"/>
+  </g>
+  <!-- Head -->
+  <circle cx="102" cy="-24" r="24" fill="#9aa3b5"/>
+  <!-- Eye: orange ring -->
+  <circle cx="110" cy="-28" r="8" fill="#f39c34"/>
+  <circle cx="111" cy="-28" r="5" fill="#2b2b2b"/>
+  <circle cx="112" cy="-30" r="1.8" fill="#fff"/>
+  <!-- Beak with white cere -->
+  <path d="M123,-27 L143,-19 L123,-12 Z" fill="#444b59"/>
+  <circle cx="124" cy="-25" r="4.5" fill="#e6e6e6"/>
+</svg>

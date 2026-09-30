@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="46" viewBox="-88 -26 100 46">
+  <!-- Pivot (the shoulder) is at 0,0; the wing points backward (-x). -->
+  <path d="M8,0 C2,-20 -42,-24 -84,-8 L-72,-2 L-84,4 L-68,7 L-76,13 C-42,16 -8,13 8,0 Z" fill="#8a5a35"/>
+  <path d="M6,-2 C-4,-15 -38,-18 -70,-8 C-40,-11 -12,-8 6,2 Z" fill="#c8915f"/>
+</svg>

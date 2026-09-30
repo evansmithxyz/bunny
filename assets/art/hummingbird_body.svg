@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="190" height="90" viewBox="-95 -50 190 90">
+  <defs>
+    <clipPath id="body"><ellipse cx="0" cy="-2" rx="46" ry="26"/></clipPath>
+  </defs>
+  <!-- Forked tail -->
+  <path d="M-36,-6 L-82,-20 L-72,-2 L-84,14 L-36,10 Z" fill="#1e8a55"/>
+  <!-- Body -->
+  <ellipse cx="0" cy="-2" rx="46" ry="26" fill="#2fbf71"/>
+  <g clip-path="url(#body)">
+    <ellipse cx="8" cy="22" rx="44" ry="18" fill="#e9f7ef"/>
+    <rect x="-50" y="16" width="100" height="14" fill="#000" opacity="0.08"/>
+  </g>
+  <!-- Head and red throat -->
+  <circle cx="40" cy="-14" r="20" fill="#2fbf71"/>
+  <ellipse cx="44" cy="0" rx="14" ry="8" fill="#e8414b"/>
+  <!-- Eye -->
+  <circle cx="47" cy="-18" r="5.5" fill="#1d2b24"/>
+  <circle cx="48.5" cy="-19.5" r="1.8" fill="#fff"/>
+  <!-- Long thin beak -->
+  <path d="M57,-17 L93,-12 L57,-9 Z" fill="#3b3b3b"/>
+</svg>

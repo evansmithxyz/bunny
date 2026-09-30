@@ -5,6 +5,19 @@ const Bunny := preload("res://scripts/bunny.gd")
 const Bird := preload("res://scripts/bird.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 const Effects := preload("res://scripts/effects.gd")
+const Scenery := preload("res://scripts/scenery.gd")
+
+# Ground art (Kenney Jumper Pack colors and decorations).
+const GRASS_TOP := Color("3bde80")
+const GRASS := Color("2ecc71")
+const GRASS_SHADOW := Color("28b162")
+const DIRT := Color("d29353")
+const GROUND_DECOR := [
+	preload("res://assets/kenney/grass1.png"),
+	preload("res://assets/kenney/grass2.png"),
+	preload("res://assets/kenney/mushroom_red.png"),
+	preload("res://assets/kenney/mushroom_brown.png"),
+]
 
 const SAVE_PATH := "user://save.cfg"
 const GROUND_VISIBLE := 160.0 # How much ground shows at the start.
@@ -32,6 +45,8 @@ var bunny: Bunny
 var camera: Camera2D
 var sfx: Sfx
 var effects: Effects
+var scenery: Scenery
+var ground_decor: Array = [] # [texture, x, scale] for each tuft/mushroom.
 var birds: Array = []
 var next_bird_y := -160.0
 var max_height := 0.0
@@ -67,6 +82,11 @@ func _ready() -> void:
 	add_child(camera)
 	camera.make_current()
 
+	scenery = Scenery.new()
+	add_child(scenery)
+	scenery.setup(screen_size, camera.position.y)
+	_place_ground_decor()
+
 	bunny = Bunny.new()
 	bunny.screen_width = screen_size.x
 	bunny.position = Vector2(screen_size.x / 2.0, -Bunny.FEET)
@@ -78,6 +98,7 @@ func _ready() -> void:
 
 	_build_hud()
 	_spawn_birds()
+	scenery.update(0.0, camera.position.y, 0.0)
 	_update_sky()
 
 	message_label.text = "Tilt to steer!\nLand on birds to climb."
@@ -106,6 +127,7 @@ func _physics_process(delta: float) -> void:
 	_update_camera()
 	_spawn_birds()
 	_remove_offscreen_birds()
+	scenery.update(delta, camera.position.y, _difficulty())
 
 	max_height = maxf(max_height, -bunny.position.y)
 	score_label.text = str(_score())
@@ -141,7 +163,7 @@ func _land_on_bird(bird: Bird) -> void:
 	bunny.position.y = bird.top_y() - Bunny.FEET
 	bunny.bounce(bird.bounce_multiplier)
 	bird.hit()
-	effects.feathers(Vector2(bunny.position.x, bird.top_y()), bird.wing_color)
+	effects.feathers(Vector2(bunny.position.x, bird.top_y()), bird.feather_color)
 
 	# Combo: different birds in a row.
 	if bird.get_instance_id() == last_bird_id:
@@ -253,6 +275,8 @@ func _update_sky() -> void:
 
 func _end_game() -> void:
 	game_over = true
+	bunny.hurt = true
+	bunny.queue_redraw()
 	sfx.play("game_over")
 	shake = 12.0
 	var score := _score()
@@ -277,8 +301,23 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _draw() -> void:
 	# Ground: grass on top of dirt, drawn wider than the screen.
-	draw_rect(Rect2(-200, 0, screen_size.x + 400, 2000), Color(0.45, 0.3, 0.18))
-	draw_rect(Rect2(-200, 0, screen_size.x + 400, 28), Color(0.35, 0.72, 0.3))
+	var w := screen_size.x + 400.0
+	draw_rect(Rect2(-200, 0, w, 2000), DIRT)
+	draw_rect(Rect2(-200, 0, w, 30), GRASS)
+	draw_rect(Rect2(-200, 0, w, 6), GRASS_TOP)
+	draw_rect(Rect2(-200, 26, w, 6), GRASS_SHADOW)
+	# Tufts and mushrooms standing on the grass.
+	for decor in ground_decor:
+		var tex: Texture2D = decor[0]
+		var size: Vector2 = tex.get_size() * decor[2]
+		draw_texture_rect(tex, Rect2(decor[1] - size.x / 2.0, 4.0 - size.y, size.x, size.y), false)
+
+
+func _place_ground_decor() -> void:
+	var x := randf_range(10.0, 60.0)
+	while x < screen_size.x:
+		ground_decor.append([GROUND_DECOR.pick_random(), x, randf_range(0.45, 0.7)])
+		x += randf_range(70.0, 160.0)
 
 
 func _build_hud() -> void:

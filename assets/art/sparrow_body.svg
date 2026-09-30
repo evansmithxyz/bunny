@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="140" viewBox="-130 -75 260 140">
+  <defs>
+    <clipPath id="body"><ellipse cx="0" cy="2" rx="74" ry="30"/></clipPath>
+    <clipPath id="head"><circle cx="64" cy="-16" r="27"/></clipPath>
+  </defs>
+  <!-- Tail -->
+  <path d="M-50,-6 L-122,-30 Q-128,-14 -120,-4 Q-127,8 -116,18 L-50,14 Z" fill="#8a5a35"/>
+  <!-- Body -->
+  <ellipse cx="0" cy="2" rx="74" ry="30" fill="#b27a4b"/>
+  <g clip-path="url(#body)">
+    <ellipse cx="16" cy="30" rx="70" ry="22" fill="#edd3ae"/>
+    <rect x="-80" y="24" width="160" height="20" fill="#000" opacity="0.08"/>
+  </g>
+  <!-- Head with dark cap and pale cheek -->
+  <circle cx="64" cy="-16" r="27" fill="#b27a4b"/>
+  <g clip-path="url(#head)">
+    <ellipse cx="58" cy="-42" rx="36" ry="18" fill="#7a4a2a"/>
+    <ellipse cx="70" cy="-2" rx="20" ry="11" fill="#edd3ae"/>
+  </g>
+  <!-- Eye -->
+  <circle cx="72" cy="-18" r="9" fill="#d9ab7c"/>
+  <circle cx="73" cy="-18" r="6" fill="#3b2616"/>
+  <circle cx="75" cy="-20" r="2" fill="#fff"/>
+  <!-- Beak -->
+  <path d="M87,-21 L109,-12 L87,-3 Z" fill="#f2a93b"/>
+  <path d="M87,-12 L109,-12 L87,-3 Z" fill="#d98c1f"/>
+</svg>

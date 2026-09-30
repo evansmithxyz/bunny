@@ -13,16 +13,46 @@ const CROW_DIVE_SPEED := 750.0
 const CROW_DIVE_RECOVERY := 1400.0
 const CROW_DIVE_SIDE_BOOST := 1.8
 
+# Art: body and wing drawn at 2x, facing right. "origin" is where the body's
+# center sits in the body image, "pivot" is the wing's shoulder point in the
+# wing image, and "shoulder" is where that attaches on the body (image pixels).
+const ART_SCALE := 0.5
+const ART := {
+	"sparrow": {
+		"body": preload("res://assets/art/sparrow_body.svg"), "origin": Vector2(130, 75),
+		"wing": preload("res://assets/art/sparrow_wing.svg"), "pivot": Vector2(88, 26),
+		"shoulder": Vector2(-4, -10),
+	},
+	"pigeon": {
+		"body": preload("res://assets/art/pigeon_body.svg"), "origin": Vector2(165, 80),
+		"wing": preload("res://assets/art/pigeon_wing.svg"), "pivot": Vector2(130, 34),
+		"shoulder": Vector2(-8, -12),
+	},
+	"hummingbird": {
+		"body": preload("res://assets/art/hummingbird_body.svg"), "origin": Vector2(95, 50),
+		"wing": preload("res://assets/art/hummingbird_wing.svg"), "pivot": Vector2(72, 14),
+		"shoulder": Vector2(-2, -14),
+	},
+	"crow": {
+		"body": preload("res://assets/art/crow_body.svg"), "origin": Vector2(140, 75),
+		"wing": preload("res://assets/art/crow_wing.svg"), "pivot": Vector2(102, 30),
+		"shoulder": Vector2(-4, -10),
+	},
+	"goose": {
+		"body": preload("res://assets/art/goose_body.svg"), "origin": Vector2(150, 130),
+		"wing": preload("res://assets/art/goose_wing.svg"), "pivot": Vector2(122, 34),
+		"shoulder": Vector2(-10, -12),
+	},
+}
+
 var kind := "sparrow"
 var width := 90.0
 var speed := 150.0
 var direction := 1.0
 var bounce_multiplier := 1.0
 var flap_speed := 12.0
-var body_color := Color(0.6, 0.42, 0.28)
-var wing_color := Color(0.45, 0.3, 0.2)
-var beak_color := Color(1.0, 0.75, 0.2)
-var eye_color := Color(0.1, 0.1, 0.12)
+var flap_amount := 0.7 # Wing swing in radians either side of its middle angle.
+var feather_color := Color("8a5a35") # Used for the feather burst on landing.
 var screen_width := 720.0
 var prev_top := 0.0 # top_y() before this frame's movement, for landing checks.
 
@@ -42,38 +72,31 @@ func setup(bird_kind: String, difficulty: float, screen_w: float) -> void:
 			width = 130.0
 			speed = 70.0
 			bounce_multiplier = 0.95
-			body_color = Color(0.62, 0.64, 0.7)
-			wing_color = Color(0.46, 0.48, 0.55)
+			feather_color = Color("9aa3b5")
 		"hummingbird": # Small and fast, but gives a super bounce.
 			width = 56.0
 			speed = 260.0
 			bounce_multiplier = 1.45
 			flap_speed = 45.0
-			body_color = Color(0.2, 0.75, 0.45)
-			wing_color = Color(0.65, 0.95, 0.85)
+			flap_amount = 0.5
+			feather_color = Color("2fbf71")
 		"crow": # Swoops away as you come down on it.
 			width = 95.0
 			speed = 130.0
 			bounce_multiplier = 1.05
-			body_color = Color(0.13, 0.13, 0.17)
-			wing_color = Color(0.24, 0.24, 0.3)
-			beak_color = Color(0.3, 0.3, 0.33)
-			eye_color = Color(0.95, 0.25, 0.2)
+			feather_color = Color("2d2f3a")
 		"goose": # Big, slow, and knocks you sideways when you land.
 			width = 120.0
 			speed = 90.0
 			bounce_multiplier = 1.0
 			flap_speed = 8.0
-			body_color = Color(0.96, 0.96, 0.93)
-			wing_color = Color(0.8, 0.8, 0.78)
-			beak_color = Color(1.0, 0.55, 0.15)
+			feather_color = Color("f4f4f0")
 		_: # Sparrow
 			width = 90.0
 			speed = randf_range(120.0, 180.0)
 	speed *= 1.0 + difficulty * 0.8
 	direction = 1.0 if randf() < 0.5 else -1.0
 	_flap_time = randf() * TAU
-
 
 func _ready() -> void:
 	_home_y = position.y
@@ -126,7 +149,7 @@ func hit() -> void:
 
 func _draw() -> void:
 	# Near an edge, also draw a copy on the other side so wrapping is seamless.
-	var extent := width * 0.5 + 25.0 # Body plus head and beak.
+	var extent := width * 0.5 + 40.0 # Body plus head and beak.
 	_draw_bird(Vector2(0, _dip))
 	if position.x + extent > screen_width:
 		_draw_bird(Vector2(-screen_width, _dip))
@@ -135,32 +158,16 @@ func _draw() -> void:
 
 
 func _draw_bird(off: Vector2) -> void:
-	var rx := width * 0.5
-	var head := off + Vector2(direction * rx * 0.85, -6)
-	if kind == "goose":
-		# Long neck: head sits further forward and up.
-		head = off + Vector2(direction * rx * 0.95, -30)
-		draw_line(off + Vector2(direction * rx * 0.55, -4), head, body_color, 12.0)
+	var art: Dictionary = ART[kind]
+	# Scale by -1 on x to face left; everything below is in the art's own pixels.
+	var base := Transform2D(0.0, Vector2(direction * ART_SCALE, ART_SCALE), 0.0, off)
+	draw_set_transform_matrix(base)
+	draw_texture(art.body, -art.origin)
 
-	# Body
-	draw_set_transform(off, 0.0, Vector2(rx / BODY_HALF_HEIGHT, 1.0))
-	draw_circle(Vector2.ZERO, BODY_HALF_HEIGHT, body_color)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-	# Head, beak, eye
-	draw_circle(head, 11, body_color)
-	draw_colored_polygon(PackedVector2Array([
-		head + Vector2(direction * 8, -4),
-		head + Vector2(direction * 20, 0),
-		head + Vector2(direction * 8, 4),
-	]), beak_color)
-	draw_circle(head + Vector2(direction * 3, -3), 2.5, eye_color)
-
-	# Wing (skipped when edge-on, which would be a flat triangle)
-	var tip_y := -6.0 + 22.0 * sin(_flap_time)
-	if absf(tip_y + 4.0) > 3.0:
-		draw_colored_polygon(PackedVector2Array([
-			off + Vector2(-rx * 0.35, -4),
-			off + Vector2(rx * 0.25, -4),
-			off + Vector2(-direction * rx * 0.2, tip_y),
-		]), wing_color)
+	# Wing rotates around the shoulder; positive angles raise it.
+	var angle := 0.3 + flap_amount * sin(_flap_time)
+	if _diving:
+		angle = -0.15 # Wings tucked in for the swoop.
+	draw_set_transform_matrix(base * Transform2D(angle, art.shoulder))
+	draw_texture(art.wing, -art.pivot)
+	draw_set_transform_matrix(Transform2D.IDENTITY)

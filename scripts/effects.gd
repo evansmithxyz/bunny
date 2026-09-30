@@ -1,6 +1,12 @@
 extends Node2D
 ## Visual effects in the game world: feather bursts, dust puffs, floating text.
 
+const FEATHER := preload("res://assets/art/feather.svg")
+const PUFF := preload("res://assets/kenney/smoke.png")
+
+# Multiplied with each particle's color, so white keeps the color and just fades it.
+var _fade_out := _make_fade_out()
+
 
 func feathers(at: Vector2, color: Color) -> void:
 	var p := _burst(at, 14, 0.7)
@@ -11,10 +17,13 @@ func feathers(at: Vector2, color: Color) -> void:
 	p.gravity = Vector2(0, 500)
 	p.angular_velocity_min = -360.0
 	p.angular_velocity_max = 360.0
-	p.scale_amount_min = 5.0
-	p.scale_amount_max = 9.0
+	p.texture = FEATHER
+	p.angle_min = -180.0
+	p.angle_max = 180.0
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 0.9
 	p.color = color
-	p.color_ramp = _fade_out(color)
+	p.color_ramp = _fade_out
 
 
 func dust(at: Vector2) -> void:
@@ -24,11 +33,11 @@ func dust(at: Vector2) -> void:
 	p.initial_velocity_min = 60.0
 	p.initial_velocity_max = 160.0
 	p.gravity = Vector2(0, 200)
-	p.scale_amount_min = 6.0
-	p.scale_amount_max = 12.0
-	var dust_color := Color(0.8, 0.7, 0.55)
-	p.color = dust_color
-	p.color_ramp = _fade_out(dust_color)
+	p.texture = PUFF
+	p.scale_amount_min = 0.35
+	p.scale_amount_max = 0.7
+	p.color = Color(1.0, 0.95, 0.85)
+	p.color_ramp = _fade_out
 
 
 ## Text that floats up and fades away, e.g. "Combo x3".
@@ -64,8 +73,8 @@ func _burst(at: Vector2, amount: int, lifetime: float) -> CPUParticles2D:
 	return p
 
 
-func _fade_out(color: Color) -> Gradient:
+static func _make_fade_out() -> Gradient:
 	var g := Gradient.new()
-	g.set_color(0, color)
-	g.set_color(1, Color(color, 0.0))
+	g.set_color(0, Color.WHITE)
+	g.set_color(1, Color(1, 1, 1, 0))
 	return g

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="50" viewBox="-102 -30 112 50">
+  <!-- Pivot (the shoulder) is at 0,0; the wing points backward (-x). Ragged feather tips. -->
+  <path d="M7,0 C0,-24 -52,-28 -98,-10 L-82,-4 L-100,2 L-82,6 L-96,12 L-76,12 L-84,18 C-42,18 -8,13 7,0 Z" fill="#1c1d25"/>
+  <path d="M5,-3 C-4,-18 -46,-21 -84,-9 C-46,-12 -12,-9 5,2 Z" fill="#3a3e50"/>
+</svg>
