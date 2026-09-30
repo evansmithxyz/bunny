@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Circular arrow -->
+  <path d="M49,22 A20,20 0 1 0 52,36" stroke="#fff" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M54,8 L56,28 L36,26 Z" fill="#fff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+</svg>

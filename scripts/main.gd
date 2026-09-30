@@ -1,11 +1,15 @@
 extends Node2D
-## Game manager: spawns birds, moves the camera up with the bunny, keeps score.
+## Game manager: spawns birds, moves the camera up with the bunny, keeps score,
+## and switches between the menu, playing, paused and game-over states.
 
 const Bunny := preload("res://scripts/bunny.gd")
 const Bird := preload("res://scripts/bird.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 const Effects := preload("res://scripts/effects.gd")
 const Scenery := preload("res://scripts/scenery.gd")
+const Hud := preload("res://scripts/hud.gd")
+
+enum State { MENU, PLAYING, PAUSED, GAME_OVER }
 
 # Ground art (Kenney Jumper Pack colors and decorations).
 const GRASS_TOP := Color("3bde80")
@@ -34,6 +38,7 @@ const BIRD_REACH_HARD := 360.0
 const CROW_START := 0.1 # Score 200
 const GOOSE_START := 0.2 # Score 400
 const GOOSE_KNOCK_SPEED := 900.0
+const MENU_BOUNCE := 0.6 # Smaller hops while the menu is showing.
 
 # Landing on different birds in a row builds a combo; bouncing on the same bird
 # again or touching the ground resets it.
@@ -55,17 +60,24 @@ var combo := 0
 var last_bird_id := 0
 var shake := 0.0
 var best_score := 0
-var game_over := false
-var can_restart := false
-
-var score_label: Label
-var message_label: Label
+var muted := false
+var purple := false # Easter egg skin.
+var state := State.MENU
+var hud: Hud
+var save := ConfigFile.new()
 var sky := Gradient.new()
+
+## Survives scene reloads: "Play again" reloads straight into a new game.
+static var skip_menu := false
 
 
 func _ready() -> void:
 	screen_size = get_viewport_rect().size
-	_load_best()
+	save.load(SAVE_PATH) # Missing on first launch; defaults below cover that.
+	best_score = save.get_value("scores", "best", 0)
+	muted = save.get_value("settings", "muted", false)
+	purple = save.get_value("settings", "purple", false)
+	AudioServer.set_bus_mute(0, muted)
 
 	sky.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
 	sky.colors = PackedColorArray([
@@ -75,6 +87,7 @@ func _ready() -> void:
 	])
 
 	sfx = Sfx.new()
+	sfx.process_mode = Node.PROCESS_MODE_ALWAYS # Button clicks play while paused.
 	add_child(sfx)
 
 	camera = Camera2D.new()
@@ -91,21 +104,33 @@ func _ready() -> void:
 	bunny.screen_width = screen_size.x
 	bunny.position = Vector2(screen_size.x / 2.0, -Bunny.FEET)
 	bunny.z_index = 1
+	bunny.purple = purple
 	add_child(bunny)
 
 	effects = Effects.new()
 	add_child(effects)
 
-	_build_hud()
+	hud = Hud.new()
+	add_child(hud)
+	hud.play_pressed.connect(_on_play_pressed)
+	hud.pause_pressed.connect(_pause)
+	hud.resume_pressed.connect(_resume)
+	hud.menu_pressed.connect(_go_to_menu)
+	hud.sound_pressed.connect(_toggle_sound)
+	hud.secret_found.connect(_toggle_purple)
+	hud.set_muted(muted)
+	hud.purple = purple
+
 	_spawn_birds()
 	scenery.update(0.0, camera.position.y, 0.0)
 	_update_sky()
 
-	message_label.text = "Tilt to steer!\nLand on birds to climb."
-	message_label.visible = true
-	get_tree().create_timer(3.0).timeout.connect(func() -> void:
-		if not game_over:
-			message_label.visible = false)
+	if skip_menu:
+		skip_menu = false
+		_start_game()
+	else:
+		bunny.controls_enabled = false
+		hud.show_menu(best_score)
 
 
 func _process(delta: float) -> void:
@@ -114,7 +139,7 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if game_over:
+	if state == State.GAME_OVER:
 		return
 	screen_size = get_viewport_rect().size
 
@@ -123,6 +148,9 @@ func _physics_process(delta: float) -> void:
 	for bird in birds:
 		bird.step(delta, bunny)
 	_check_landing(prev_feet)
+	if state == State.MENU:
+		scenery.update(delta, camera.position.y, 0.0)
+		return
 
 	_update_camera()
 	_spawn_birds()
@@ -130,7 +158,7 @@ func _physics_process(delta: float) -> void:
 	scenery.update(delta, camera.position.y, _difficulty())
 
 	max_height = maxf(max_height, -bunny.position.y)
-	score_label.text = str(_score())
+	hud.set_score(_score())
 	_update_sky()
 
 	if bunny.position.y - Bunny.FEET > camera.position.y + screen_size.y / 2.0:
@@ -144,11 +172,16 @@ func _check_landing(prev_feet: float) -> void:
 
 	if feet >= 0.0: # Ground
 		bunny.position.y = -Bunny.FEET
+		effects.dust(Vector2(bunny.position.x, 0))
+		if state == State.MENU:
+			bunny.bounce(MENU_BOUNCE) # Quiet little hops behind the menu.
+			return
 		bunny.bounce()
 		combo = 0
 		sfx.play("thud")
-		effects.dust(Vector2(bunny.position.x, 0))
 		return
+	if state == State.MENU:
+		return # On the menu the bunny only hops on the ground.
 
 	for bird in birds:
 		var dx := Bunny.wrapped_dx(bunny.position.x, bird.position.x, screen_size.x)
@@ -274,7 +307,7 @@ func _update_sky() -> void:
 
 
 func _end_game() -> void:
-	game_over = true
+	state = State.GAME_OVER
 	bunny.hurt = true
 	bunny.queue_redraw()
 	sfx.play("game_over")
@@ -283,20 +316,94 @@ func _end_game() -> void:
 	var new_best := score > best_score
 	if new_best:
 		best_score = score
-		_save_best()
-	message_label.text = "Game Over\n\nScore: %d\nBest: %d%s\n\nTap to play again" % [
-		score, best_score, "  NEW!" if new_best else ""]
-	message_label.visible = true
-	get_tree().create_timer(0.6).timeout.connect(func() -> void: can_restart = true)
+		_save_setting("scores", "best", best_score)
+	hud.show_game_over(score, best_score, new_best)
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if not can_restart:
-		return
-	var tapped := (event is InputEventScreenTouch or event is InputEventMouseButton) and event.is_pressed()
-	if tapped or event.is_action_pressed("ui_accept"):
-		can_restart = false
+# --- Menu, pause and sound --------------------------------------------------
+
+func _start_game() -> void:
+	state = State.PLAYING
+	bunny.controls_enabled = true
+	hud.show_playing()
+	hud.set_score(_score())
+	hud.show_hint("Tilt to steer!\nLand on birds to climb.", 3.0)
+
+
+func _on_play_pressed() -> void:
+	sfx.play("click")
+	if state == State.MENU:
+		_start_game()
+	else: # "Play again" after a game over: fresh world, skip the menu.
+		skip_menu = true
 		get_tree().reload_current_scene()
+
+
+func _pause() -> void:
+	if state != State.PLAYING:
+		return
+	sfx.play("click")
+	state = State.PAUSED
+	get_tree().paused = true
+	hud.show_paused()
+
+
+func _resume() -> void:
+	if state != State.PAUSED:
+		return
+	sfx.play("click")
+	state = State.PLAYING
+	get_tree().paused = false
+	hud.show_playing()
+
+
+func _go_to_menu() -> void:
+	sfx.play("click")
+	get_tree().paused = false
+	skip_menu = false
+	get_tree().reload_current_scene()
+
+
+func _toggle_sound() -> void:
+	muted = not muted
+	AudioServer.set_bus_mute(0, muted)
+	hud.set_muted(muted)
+	_save_setting("settings", "muted", muted)
+	sfx.play("click") # Only heard when turning sound back on.
+
+
+## Easter egg: tapping the menu title 7 times swaps the brown and purple bunnies.
+func _toggle_purple() -> void:
+	purple = not purple
+	bunny.purple = purple
+	hud.purple = purple
+	_save_setting("settings", "purple", purple)
+	sfx.play("super")
+	var color := Color("b58bf0") if purple else Color("c68645")
+	effects.feathers(bunny.position, color)
+	effects.feathers(bunny.position + Vector2(0, -40), Color.WHITE)
+	hud.show_toast("Purple bunny!" if purple else "Brown bunny is back!", 2.0)
+
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED:
+			_pause() # Switching apps or a phone call pauses the game.
+		NOTIFICATION_WM_GO_BACK_REQUEST: # Android back button.
+			match state:
+				State.PLAYING:
+					_pause()
+				State.PAUSED:
+					_resume()
+				State.GAME_OVER:
+					_go_to_menu()
+				State.MENU:
+					get_tree().quit()
+
+
+func _save_setting(section: String, key: String, value: Variant) -> void:
+	save.set_value(section, key, value)
+	save.save(SAVE_PATH)
 
 
 func _draw() -> void:
@@ -318,41 +425,3 @@ func _place_ground_decor() -> void:
 	while x < screen_size.x:
 		ground_decor.append([GROUND_DECOR.pick_random(), x, randf_range(0.45, 0.7)])
 		x += randf_range(70.0, 160.0)
-
-
-func _build_hud() -> void:
-	var hud := CanvasLayer.new()
-	add_child(hud)
-
-	score_label = Label.new()
-	score_label.position = Vector2(28, 60)
-	_style_label(score_label, 52)
-	score_label.text = "0"
-	hud.add_child(score_label)
-
-	message_label = Label.new()
-	message_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	message_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_style_label(message_label, 48)
-	message_label.visible = false
-	hud.add_child(message_label)
-
-
-func _style_label(label: Label, size: int) -> void:
-	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_color", Color.WHITE)
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
-	label.add_theme_constant_override("outline_size", 10)
-
-
-func _load_best() -> void:
-	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) == OK:
-		best_score = cfg.get_value("scores", "best", 0)
-
-
-func _save_best() -> void:
-	var cfg := ConfigFile.new()
-	cfg.set_value("scores", "best", best_score)
-	cfg.save(SAVE_PATH)

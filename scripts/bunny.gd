@@ -17,15 +17,28 @@ const INVERT_TILT := false
 
 # Kenney Jumper Pack sprites (CC0), drawn with their feet at FEET.
 const SPRITE_SCALE := 0.5
-const TEX_STAND := preload("res://assets/kenney/bunny1_stand.png")
-const TEX_READY := preload("res://assets/kenney/bunny1_ready.png")
-const TEX_JUMP := preload("res://assets/kenney/bunny1_jump.png")
-const TEX_HURT := preload("res://assets/kenney/bunny1_hurt.png")
+const BROWN := {
+	"stand": preload("res://assets/kenney/bunny1_stand.png"),
+	"ready": preload("res://assets/kenney/bunny1_ready.png"),
+	"jump": preload("res://assets/kenney/bunny1_jump.png"),
+	"hurt": preload("res://assets/kenney/bunny1_hurt.png"),
+}
+const PURPLE := { # Easter egg skin: tap the menu title 7 times.
+	"stand": preload("res://assets/kenney/bunny2_stand.png"),
+	"ready": preload("res://assets/kenney/bunny2_ready.png"),
+	"jump": preload("res://assets/kenney/bunny2_jump.png"),
+	"hurt": preload("res://assets/kenney/bunny2_hurt.png"),
+}
 const READY_TIME := 0.1 # How long the crouch pose shows after landing.
 
 var velocity := Vector2.ZERO
 var screen_width := 720.0
 var hurt := false # Shows the hurt face (set on game over).
+var controls_enabled := true # Off on the menu, where the bunny just hops in place.
+var purple := false:
+	set(value):
+		purple = value
+		queue_redraw()
 
 var _knocked_time := 0.0 # Steering is disabled while knocked sideways.
 var _ready_time := 0.0
@@ -69,6 +82,8 @@ static func wrapped_dx(from_x: float, to_x: float, width: float) -> float:
 
 
 func _read_horizontal_input() -> float:
+	if not controls_enabled:
+		return 0.0
 	var keys := Input.get_axis("ui_left", "ui_right")
 	if keys != 0.0:
 		return keys
@@ -83,13 +98,14 @@ func _read_horizontal_input() -> float:
 
 
 func _current_texture() -> Texture2D:
+	var skin := PURPLE if purple else BROWN
 	if hurt or _knocked_time > 0.0:
-		return TEX_HURT
+		return skin.hurt
 	if _ready_time > 0.0:
-		return TEX_READY
+		return skin.ready
 	if velocity.y < -250.0:
-		return TEX_JUMP # Legs kicked out while rising fast.
-	return TEX_STAND # Legs down, ready to land.
+		return skin.jump # Legs kicked out while rising fast.
+	return skin.stand # Legs down, ready to land.
 
 
 func _draw() -> void:

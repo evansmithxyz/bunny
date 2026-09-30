@@ -19,6 +19,7 @@ func _ready() -> void:
 	_sounds["caw"] = _caw()
 	_sounds["combo"] = _sweep(880.0, 1320.0, 0.1, 0.3)
 	_sounds["game_over"] = _sweep(600.0, 140.0, 0.7, 0.5)
+	_sounds["click"] = _sweep(900.0, 600.0, 0.06, 0.35)
 	for i in VOICES:
 		var player := AudioStreamPlayer.new()
 		player.volume_db = -6.0
