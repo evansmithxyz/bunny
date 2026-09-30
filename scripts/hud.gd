@@ -16,6 +16,12 @@ const ICON_RETRY := preload("res://assets/ui/retry.svg")
 const ICON_HOME := preload("res://assets/ui/home.svg")
 const ICON_SOUND_ON := preload("res://assets/ui/sound_on.svg")
 const ICON_SOUND_OFF := preload("res://assets/ui/sound_off.svg")
+const ICON_CARROT := preload("res://assets/kenney/carrots.png")
+const POWERUP_ICONS := {
+	"jetpack": preload("res://assets/kenney/powerup_jetpack.png"),
+	"wings": preload("res://assets/kenney/powerup_wings.png"),
+	"bubble": preload("res://assets/kenney/powerup_bubble.png"),
+}
 
 const ORANGE := [Color("f39c34"), Color("c2721b")] # [face, shadow]
 const BLUE := [Color("3b9bd6"), Color("2a78a8")]
@@ -32,6 +38,11 @@ var screen := Screen.MENU
 var purple := false # Which skin the secret would switch *away* from.
 
 var _score_label: Label
+var _status: VBoxContainer # Carrot count and active power-ups, under the score.
+var _carrot_label: Label
+var _powerup_rows := {} # kind -> [row, ProgressBar or null]
+var _menu_carrots: HBoxContainer
+var _final_carrots: HBoxContainer
 var _hint_label: Label
 var _pause_button: Button
 var _menu: Control
@@ -59,9 +70,11 @@ func _ready() -> void:
 
 # --- Switching screens ------------------------------------------------------
 
-func show_menu(best: int) -> void:
+func show_menu(best: int, total_carrots: int) -> void:
 	screen = Screen.MENU
 	_menu_best.text = "Best: %d" % best if best > 0 else ""
+	_menu_carrots.visible = total_carrots > 0
+	_menu_carrots.get_child(1).text = str(total_carrots)
 	_show_only(_menu)
 
 
@@ -75,9 +88,11 @@ func show_paused() -> void:
 	_show_only(_paused)
 
 
-func show_game_over(score: int, best: int, new_best: bool) -> void:
+func show_game_over(score: int, best: int, new_best: bool, carrots: int) -> void:
 	screen = Screen.GAME_OVER
 	_final_score.text = str(score)
+	_final_carrots.visible = carrots > 0
+	_final_carrots.get_child(1).text = "+%d" % carrots
 	_final_best.text = "New best!" if new_best else "Best: %d" % best
 	_final_best.add_theme_color_override("font_color", ORANGE[1] if new_best else INK)
 	_show_only(_game_over)
@@ -90,6 +105,21 @@ func show_game_over(score: int, best: int, new_best: bool) -> void:
 
 func set_score(score: int) -> void:
 	_score_label.text = str(score)
+
+
+func set_carrots(count: int) -> void:
+	_carrot_label.text = str(count)
+
+
+## Shows a row per active power-up; fractions are time left (0 = inactive).
+func set_powerups(jetpack: float, wings: float, bubble: bool) -> void:
+	for kind in _powerup_rows:
+		var row: Control = _powerup_rows[kind][0]
+		var bar: ProgressBar = _powerup_rows[kind][1]
+		var left: float = {"jetpack": jetpack, "wings": wings, "bubble": 1.0 if bubble else 0.0}[kind]
+		row.visible = left > 0.0
+		if bar:
+			bar.value = left
 
 
 func set_muted(muted: bool) -> void:
@@ -144,6 +174,7 @@ func _bump(control: Control) -> void:
 
 func _show_only(overlay: Control) -> void:
 	_score_label.visible = screen == Screen.PLAYING or screen == Screen.PAUSED
+	_status.visible = _score_label.visible
 	_pause_button.visible = screen == Screen.PLAYING
 	for o in [_menu, _paused, _game_over]:
 		o.visible = o == overlay
@@ -174,6 +205,25 @@ func _build_playing_ui() -> void:
 	_score_label = _label("0", 56, Color.WHITE, true)
 	_score_label.position = Vector2(28, TOP_MARGIN)
 	add_child(_score_label)
+
+	_status = VBoxContainer.new()
+	_status.position = Vector2(28, TOP_MARGIN + 74)
+	_status.add_theme_constant_override("separation", 8)
+	add_child(_status)
+	var carrot_row := _icon_row(ICON_CARROT, "0", 40)
+	_carrot_label = carrot_row.get_child(1)
+	_status.add_child(carrot_row)
+	for kind in POWERUP_ICONS:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		row.add_child(_icon(POWERUP_ICONS[kind], 48))
+		var bar: ProgressBar = null
+		if kind != "bubble": # The bubble lasts until used, so no timer.
+			bar = _timer_bar()
+			row.add_child(bar)
+		row.visible = false
+		_status.add_child(row)
+		_powerup_rows[kind] = [row, bar]
 
 	_pause_button = _button("", ICON_PAUSE, BLUE, Vector2(96, 96))
 	# Pinned to the top-right corner.
@@ -220,6 +270,9 @@ func _build_menu() -> void:
 
 	_menu_best = _label("", 40, Color.WHITE, true)
 	box.add_child(_menu_best)
+	_menu_carrots = _icon_row(ICON_CARROT, "0", 40)
+	_menu_carrots.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_child(_menu_carrots)
 	box.add_child(_spacer(20))
 
 	var play := _button("Play", ICON_PLAY, ORANGE, Vector2(380, 120), 56)
@@ -256,6 +309,10 @@ func _build_game_over() -> void:
 	card.add_child(_final_score)
 	_final_best = _label("", 40, INK)
 	card.add_child(_final_best)
+	_final_carrots = _icon_row(ICON_CARROT, "+0", 40, false)
+	_final_carrots.alignment = BoxContainer.ALIGNMENT_CENTER
+	_final_carrots.get_child(1).add_theme_color_override("font_color", ORANGE[1])
+	card.add_child(_final_carrots)
 	card.add_child(_spacer(10))
 
 	var again := _button("Play again", ICON_RETRY, ORANGE, Vector2(380, 110))
@@ -329,6 +386,41 @@ func _label(text: String, size: int, color: Color, outlined: bool = false) -> La
 		label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
 		label.add_theme_constant_override("outline_size", 12)
 	return label
+
+
+## An icon followed by a number, e.g. the carrot counter.
+func _icon_row(icon: Texture2D, text: String, size: int, outlined: bool = true) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.add_child(_icon(icon, size))
+	row.add_child(_label(text, size, Color.WHITE if outlined else INK, outlined))
+	return row
+
+
+func _icon(tex: Texture2D, size: float) -> TextureRect:
+	var rect := TextureRect.new()
+	rect.texture = tex
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.custom_minimum_size = Vector2(size, size)
+	return rect
+
+
+func _timer_bar() -> ProgressBar:
+	var bar := ProgressBar.new()
+	bar.max_value = 1.0
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(130, 16)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var back := StyleBoxFlat.new()
+	back.bg_color = Color(0, 0, 0, 0.35)
+	back.set_corner_radius_all(8)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = ORANGE[0]
+	fill.set_corner_radius_all(8)
+	bar.add_theme_stylebox_override("background", back)
+	bar.add_theme_stylebox_override("fill", fill)
+	return bar
 
 
 func _spacer(height: float) -> Control:

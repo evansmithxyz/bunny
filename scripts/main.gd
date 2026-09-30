@@ -8,6 +8,7 @@ const Sfx := preload("res://scripts/sfx.gd")
 const Effects := preload("res://scripts/effects.gd")
 const Scenery := preload("res://scripts/scenery.gd")
 const Hud := preload("res://scripts/hud.gd")
+const Pickup := preload("res://scripts/pickup.gd")
 
 enum State { MENU, PLAYING, PAUSED, GAME_OVER }
 
@@ -45,6 +46,21 @@ const MENU_BOUNCE := 0.6 # Smaller hops while the menu is showing.
 const COMBO_MIN := 3
 const COMBO_POINTS := 2 # Bonus per landing = combo * COMBO_POINTS
 
+# Carrots: short trails above some birds. Gold ones are rare and worth more.
+const CARROT_TRAIL_CHANCE := 0.2
+const CARROT_TRAIL_SPACING := 55.0
+const GOLD_CARROT_CHANCE := 0.05
+const CARROT_VALUE := {"carrot": 1, "gold_carrot": 5} # Toward the saved total.
+const CARROT_POINTS := {"carrot": 10, "gold_carrot": 50}
+
+# Power-ups: one every so often as you climb.
+const FIRST_POWERUP_Y := -1500.0
+const POWERUP_GAP_MIN := 1800.0
+const POWERUP_GAP_MAX := 3000.0
+const POWERUP_WEIGHTS := {"jetpack": 1.0, "wings": 1.2, "bubble": 1.0}
+const POWERUP_NAMES := {"jetpack": "JETPACK!", "wings": "WINGS!", "bubble": "BUBBLE!"}
+const BUBBLE_RESCUE_BOUNCE := 1.7 # Launch strength when the bubble saves you.
+
 var screen_size: Vector2
 var bunny: Bunny
 var camera: Camera2D
@@ -53,6 +69,11 @@ var effects: Effects
 var scenery: Scenery
 var ground_decor: Array = [] # [texture, x, scale] for each tuft/mushroom.
 var birds: Array = []
+var pickups: Array = []
+var next_powerup_y := FIRST_POWERUP_Y
+var carrots_this_run := 0
+var total_carrots := 0
+var carrot_streak := 0 # Pitch of the carrot sound rises along a trail.
 var next_bird_y := -160.0
 var max_height := 0.0
 var bonus_points := 0
@@ -75,6 +96,7 @@ func _ready() -> void:
 	screen_size = get_viewport_rect().size
 	save.load(SAVE_PATH) # Missing on first launch; defaults below cover that.
 	best_score = save.get_value("scores", "best", 0)
+	total_carrots = save.get_value("scores", "carrots", 0)
 	muted = save.get_value("settings", "muted", false)
 	purple = save.get_value("settings", "purple", false)
 	AudioServer.set_bus_mute(0, muted)
@@ -130,7 +152,7 @@ func _ready() -> void:
 		_start_game()
 	else:
 		bunny.controls_enabled = false
-		hud.show_menu(best_score)
+		hud.show_menu(best_score, total_carrots)
 
 
 func _process(delta: float) -> void:
@@ -148,6 +170,8 @@ func _physics_process(delta: float) -> void:
 	for bird in birds:
 		bird.step(delta, bunny)
 	_check_landing(prev_feet)
+	if state == State.PLAYING:
+		_check_pickups()
 	if state == State.MENU:
 		scenery.update(delta, camera.position.y, 0.0)
 		return
@@ -159,10 +183,17 @@ func _physics_process(delta: float) -> void:
 
 	max_height = maxf(max_height, -bunny.position.y)
 	hud.set_score(_score())
+	hud.set_powerups(bunny.jetpack_time / Bunny.JETPACK_TIME, bunny.wings_time / Bunny.WINGS_TIME, bunny.has_bubble)
+	if bunny.jetpack_time <= 0.0:
+		sfx.stop_loop()
 	_update_sky()
 
-	if bunny.position.y - Bunny.FEET > camera.position.y + screen_size.y / 2.0:
-		_end_game()
+	var bottom := camera.position.y + screen_size.y / 2.0
+	if bunny.position.y - Bunny.FEET > bottom:
+		if bunny.has_bubble:
+			_bubble_rescue(bottom)
+		else:
+			_end_game()
 
 
 func _check_landing(prev_feet: float) -> void:
@@ -196,6 +227,7 @@ func _land_on_bird(bird: Bird) -> void:
 	bunny.position.y = bird.top_y() - Bunny.FEET
 	bunny.bounce(bird.bounce_multiplier)
 	bird.hit()
+	carrot_streak = 0
 	effects.feathers(Vector2(bunny.position.x, bird.top_y()), bird.feather_color)
 
 	# Combo: different birds in a row.
@@ -260,6 +292,74 @@ func _spawn_bird(y: float) -> void:
 	add_child(bird)
 	birds.append(bird)
 
+	# Treats above this bird: a carrot trail, and sometimes a power-up.
+	if y < -300.0 and randf() < CARROT_TRAIL_CHANCE:
+		for i in randi_range(3, 5):
+			var kind := "gold_carrot" if randf() < GOLD_CARROT_CHANCE else "carrot"
+			_spawn_pickup(kind, Vector2(bird.position.x, y - 70.0 - i * CARROT_TRAIL_SPACING))
+	if y < next_powerup_y:
+		next_powerup_y -= randf_range(POWERUP_GAP_MIN, POWERUP_GAP_MAX)
+		_spawn_pickup(_pick_weighted(POWERUP_WEIGHTS), Vector2(_reachable_x(bird.position.x, d), y - 100.0))
+
+
+func _spawn_pickup(kind: String, at: Vector2) -> void:
+	var pickup := Pickup.new()
+	pickup.kind = kind
+	pickup.position = at
+	add_child(pickup)
+	pickups.append(pickup)
+
+
+func _check_pickups() -> void:
+	var center := bunny.position + Vector2(0, -10) # Middle of the bunny's body.
+	for i in range(pickups.size() - 1, -1, -1):
+		var pickup: Pickup = pickups[i]
+		var dx := Bunny.wrapped_dx(center.x, pickup.position.x, screen_size.x)
+		var dy := pickup.position.y - center.y
+		var reach := pickup.radius() + 30.0
+		if dx * dx + dy * dy < reach * reach:
+			pickups.remove_at(i)
+			_collect(pickup)
+
+
+func _collect(pickup: Pickup) -> void:
+	pickup.collect()
+	if not pickup.is_powerup():
+		carrots_this_run += CARROT_VALUE[pickup.kind]
+		bonus_points += CARROT_POINTS[pickup.kind]
+		carrot_streak += 1
+		hud.set_carrots(carrots_this_run)
+		sfx.play("carrot", 1.0 + 0.08 * mini(carrot_streak, 8))
+		var gold := pickup.kind == "gold_carrot"
+		effects.popup(pickup.position + Vector2(0, -30), "+%d" % CARROT_POINTS[pickup.kind],
+				Color(1.0, 0.85, 0.2) if gold else Color(1.0, 0.6, 0.2), 44 if gold else 30)
+		return
+
+	sfx.play("powerup")
+	shake = 5.0
+	effects.popup(bunny.position + Vector2(0, -110), POWERUP_NAMES[pickup.kind], Color(0.6, 0.9, 1.0), 44)
+	match pickup.kind:
+		"jetpack":
+			bunny.jetpack_time = Bunny.JETPACK_TIME
+			sfx.start_loop("jetpack")
+		"wings":
+			bunny.wings_time = Bunny.WINGS_TIME
+		"bubble":
+			bunny.has_bubble = true
+
+
+## The bubble pops and launches the bunny back up from the bottom of the screen.
+func _bubble_rescue(bottom: float) -> void:
+	bunny.has_bubble = false
+	bunny.position.y = bottom - Bunny.FEET
+	bunny.bounce(BUBBLE_RESCUE_BOUNCE)
+	combo = 0
+	sfx.play("pop")
+	sfx.play("super")
+	shake = 10.0
+	effects.feathers(bunny.position, Color(0.75, 0.9, 1.0))
+	effects.popup(bunny.position + Vector2(0, -110), "SAVED!", Color(0.6, 0.9, 1.0), 48)
+
 
 func _pick_bird_kind(d: float) -> String:
 	var weights := {
@@ -269,15 +369,20 @@ func _pick_bird_kind(d: float) -> String:
 		"crow": 0.0 if d < CROW_START else lerpf(0.15, 0.45, d),
 		"goose": 0.0 if d < GOOSE_START else lerpf(0.15, 0.3, d),
 	}
+	return _pick_weighted(weights)
+
+
+## Picks a key at random, with chances proportional to its weight.
+func _pick_weighted(weights: Dictionary) -> String:
 	var total := 0.0
 	for weight: float in weights.values():
 		total += weight
 	var roll := randf() * total
-	for kind: String in weights:
-		roll -= weights[kind]
+	for key: String in weights:
+		roll -= weights[key]
 		if roll <= 0.0:
-			return kind
-	return "sparrow"
+			return key
+	return weights.keys()[0]
 
 
 func _reachable_x(from_x: float, difficulty: float) -> float:
@@ -288,10 +393,11 @@ func _reachable_x(from_x: float, difficulty: float) -> float:
 
 func _remove_offscreen_birds() -> void:
 	var bottom := camera.position.y + screen_size.y / 2.0 + 100.0
-	for i in range(birds.size() - 1, -1, -1):
-		if birds[i].position.y > bottom:
-			birds[i].queue_free()
-			birds.remove_at(i)
+	for list: Array in [birds, pickups]:
+		for i in range(list.size() - 1, -1, -1):
+			if list[i].position.y > bottom:
+				list[i].queue_free()
+				list.remove_at(i)
 
 
 func _difficulty() -> float:
@@ -308,6 +414,9 @@ func _update_sky() -> void:
 
 func _end_game() -> void:
 	state = State.GAME_OVER
+	sfx.stop_loop()
+	total_carrots += carrots_this_run
+	_save_setting("scores", "carrots", total_carrots)
 	bunny.hurt = true
 	bunny.queue_redraw()
 	sfx.play("game_over")
@@ -317,7 +426,7 @@ func _end_game() -> void:
 	if new_best:
 		best_score = score
 		_save_setting("scores", "best", best_score)
-	hud.show_game_over(score, best_score, new_best)
+	hud.show_game_over(score, best_score, new_best, carrots_this_run)
 
 
 # --- Menu, pause and sound --------------------------------------------------
@@ -327,6 +436,7 @@ func _start_game() -> void:
 	bunny.controls_enabled = true
 	hud.show_playing()
 	hud.set_score(_score())
+	hud.set_carrots(0)
 	hud.show_hint("Tilt to steer!\nLand on birds to climb.", 3.0)
 
 
