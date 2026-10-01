@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="368" height="94" viewBox="-196 -52 368 94">
+  <defs>
+    <clipPath id="body"><path d="M-114,2 C-92,-20 -42,-29 0,-28 C50,-27 94,-22 110,-4 C118,8 100,27 60,29 C20,32 -40,31 -82,21 C-102,15 -116,8 -114,2 Z"/></clipPath>
+    <clipPath id="hood"><path d="M138,-18 C138,-38 122,-47 102,-46 C88,-45 78,-38 72,-30 L62,-24 L70,-18 L58,-10 L68,-5 L58,4 L71,7 L64,16 L80,15 C98,18 118,10 130,0 C136,-6 138,-12 138,-18 Z"/></clipPath>
+    <clipPath id="tail"><path d="M-96,-9 L-166,-30 Q-185,-31 -182,-17 Q-195,-10 -186,-1 Q-196,8 -184,14 Q-188,29 -167,26 L-96,15 Z"/></clipPath>
+  </defs>
+  <!-- White tail fan with rounded feather tips -->
+  <path d="M-96,-9 L-166,-30 Q-185,-31 -182,-17 Q-195,-10 -186,-1 Q-196,8 -184,14 Q-188,29 -167,26 L-96,15 Z" fill="#f4f1ea"/>
+  <g clip-path="url(#tail)">
+    <rect x="-200" y="16" width="110" height="16" fill="#000" opacity="0.1"/>
+  </g>
+  <path d="M-150,-14 L-180,-17 M-152,-1 L-184,-1 M-150,11 L-182,14" stroke="#dcd6c8" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Tucked yellow feet -->
+  <ellipse cx="-34" cy="30" rx="15" ry="7" fill="#f2b134"/>
+  <path d="M-34,31 L-46,31" stroke="#d98c1f" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M-47,28 Q-54,29 -53,34 M-45,33 Q-51,35 -49,40" stroke="#2b1d14" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Streamlined brown body -->
+  <path d="M-114,2 C-92,-20 -42,-29 0,-28 C50,-27 94,-22 110,-4 C118,8 100,27 60,29 C20,32 -40,31 -82,21 C-102,15 -116,8 -114,2 Z" fill="#5b3a29"/>
+  <g clip-path="url(#body)">
+    <ellipse cx="-6" cy="-24" rx="80" ry="10" fill="#7a5541" opacity="0.6"/>
+    <rect x="-120" y="18" width="240" height="16" fill="#000" opacity="0.16"/>
+  </g>
+  <!-- White head with shaggy neck feathers -->
+  <path d="M138,-18 C138,-38 122,-47 102,-46 C88,-45 78,-38 72,-30 L62,-24 L70,-18 L58,-10 L68,-5 L58,4 L71,7 L64,16 L80,15 C98,18 118,10 130,0 C136,-6 138,-12 138,-18 Z" fill="#f4f1ea"/>
+  <g clip-path="url(#hood)">
+    <ellipse cx="100" cy="14" rx="44" ry="12" fill="#dcd6c8"/>
+    <ellipse cx="96" cy="-40" rx="22" ry="5" fill="#fff" opacity="0.6"/>
+  </g>
+  <!-- Eye with a short brow -->
+  <circle cx="114" cy="-24" r="7.5" fill="#f2d27a"/>
+  <circle cx="115" cy="-24" r="4.8" fill="#2b1d14"/>
+  <circle cx="116.6" cy="-25.8" r="1.7" fill="#fff"/>
+  <path d="M104,-36 L122,-32" stroke="#5b3a29" stroke-width="4" stroke-linecap="round"/>
+  <!-- Big hooked beak -->
+  <path d="M128,-30 C146,-34 162,-26 167,-12 C169,-5 166,1 160,3 C161,-3 158,-8 152,-9 L128,-8 Z" fill="#f2b134"/>
+  <path d="M128,-12 L154,-11 C158,-10 161,-5 160,3 C158,-4 154,-6 148,-6 L128,-6 Z" fill="#d98c1f"/>
+  <path d="M128,-7 L148,-6 C144,0 136,2 128,1 Z" fill="#d98c1f"/>
+  <ellipse cx="140" cy="-25" rx="7" ry="2.5" fill="#fff" opacity="0.35"/>
+</svg>

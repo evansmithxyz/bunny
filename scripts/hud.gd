@@ -30,7 +30,13 @@ const POWERUP_ICONS := {
 	"jetpack": preload("res://assets/kenney/powerup_jetpack.png"),
 	"wings": preload("res://assets/kenney/powerup_wings.png"),
 	"bubble": preload("res://assets/kenney/powerup_bubble.png"),
+	"spring": preload("res://assets/art/powerup_spring.svg"),
+	"slowmo": preload("res://assets/art/powerup_slowmo.svg"),
 }
+# How each power-up's status row shows what's left.
+const POWERUP_SHOWS := {"jetpack": "bar", "wings": "bar", "bubble": "icon", "spring": "count", "slowmo": "bar"}
+const ICON_ARROW := preload("res://assets/ui/arrow.svg")
+const TIPS := {"tilt": "Tilt your phone to steer", "touch": "Touch left or right to steer"}
 
 const UI := preload("res://scripts/ui.gd")
 const Shop := preload("res://scripts/shop.gd")
@@ -55,7 +61,11 @@ var tilt_screen: TiltScreen
 var _score_label: Label
 var _status: VBoxContainer # Carrot count and active power-ups, under the score.
 var _carrot_label: Label
-var _powerup_rows := {} # kind -> [row, ProgressBar or null]
+var _powerup_rows := {} # kind -> [row, ProgressBar or Label or null]
+var _slowmo_tint: ColorRect
+var _touch_arrows: Array[TextureRect] = []
+var _menu_tip: Label
+var _control_mode := "tilt"
 var _menu_carrots: HBoxContainer
 var _final_carrots: HBoxContainer
 var _hint_label: Label
@@ -105,9 +115,9 @@ func show_shop(profile: RefCounted) -> void:
 	_show_only(shop)
 
 
-func show_tilt(right: Vector3, sensitivity: float) -> void:
+func show_tilt(right: Vector3, sensitivity: float, mode: String) -> void:
 	screen = Screen.TILT
-	tilt_screen.open(right, sensitivity)
+	tilt_screen.open(right, sensitivity, mode)
 	_show_only(tilt_screen)
 
 
@@ -144,15 +154,35 @@ func set_carrots(count: int) -> void:
 	_carrot_label.text = str(count)
 
 
-## Shows a row per active power-up; fractions are time left (0 = inactive).
-func set_powerups(jetpack: float, wings: float, bubble: bool) -> void:
+## Shows a row per active power-up. Values are fractions of time left for
+## timed ones, bounces left for spring shoes, and 1/0 for the bubble.
+func set_powerups(values: Dictionary) -> void:
 	for kind in _powerup_rows:
 		var row: Control = _powerup_rows[kind][0]
-		var bar: ProgressBar = _powerup_rows[kind][1]
-		var left: float = {"jetpack": jetpack, "wings": wings, "bubble": 1.0 if bubble else 0.0}[kind]
+		var detail: Control = _powerup_rows[kind][1]
+		var left: float = values.get(kind, 0.0)
 		row.visible = left > 0.0
-		if bar:
-			bar.value = left
+		if detail is ProgressBar:
+			detail.value = left
+		elif detail is Label:
+			detail.text = "x%d" % int(left)
+
+
+## Blue tint over the game while slow motion is on.
+func set_slowmo(active: bool) -> void:
+	_slowmo_tint.visible = active
+
+
+## "tilt" or "touch": changes the menu tip and the touch arrows.
+func set_control_mode(mode: String) -> void:
+	_control_mode = mode
+	_menu_tip.text = TIPS[mode]
+	_update_touch_arrows()
+
+
+func _update_touch_arrows() -> void:
+	for arrow in _touch_arrows:
+		arrow.visible = _control_mode == "touch" and screen == Screen.PLAYING
 
 
 ## Updates the sound / music / vibration buttons to show which are on.
@@ -207,6 +237,7 @@ func _show_only(overlay: Control) -> void:
 	if screen != Screen.PLAYING:
 		_hint_label.visible = false
 	_toast.visible = false
+	_update_touch_arrows()
 
 
 # Keyboard shortcuts for testing on a PC: Esc pauses/resumes, Enter/Space plays.
@@ -232,6 +263,32 @@ func _unhandled_input(event: InputEvent) -> void:
 # --- Building the UI --------------------------------------------------------
 
 func _build_playing_ui() -> void:
+	# First, so it sits behind everything else on this layer.
+	_slowmo_tint = ColorRect.new()
+	_slowmo_tint.color = Color(0.2, 0.32, 0.95, 0.26) # Deep enough to notice against the blue sky.
+	_slowmo_tint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_slowmo_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_slowmo_tint.visible = false
+	add_child(_slowmo_tint)
+
+	# Faint arrows in the bottom corners as a reminder in touch mode.
+	for side in [-1.0, 1.0]:
+		var arrow := UI.icon(ICON_ARROW, 96)
+		arrow.modulate.a = 0.35
+		arrow.flip_h = side < 0.0
+		arrow.anchor_left = 0.0 if side < 0.0 else 1.0
+		arrow.anchor_right = arrow.anchor_left
+		arrow.anchor_top = 1.0
+		arrow.anchor_bottom = 1.0
+		arrow.offset_left = 24.0 if side < 0.0 else -120.0
+		arrow.offset_right = arrow.offset_left + 96.0
+		arrow.offset_top = -150.0
+		arrow.offset_bottom = -54.0
+		arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		arrow.visible = false
+		add_child(arrow)
+		_touch_arrows.append(arrow)
+
 	_score_label = UI.label("0", 56, Color.WHITE, true)
 	_score_label.position = Vector2(28, TOP_MARGIN)
 	add_child(_score_label)
@@ -247,13 +304,18 @@ func _build_playing_ui() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		row.add_child(UI.icon(POWERUP_ICONS[kind], 48))
-		var bar: ProgressBar = null
-		if kind != "bubble": # The bubble lasts until used, so no timer.
-			bar = UI.timer_bar()
-			row.add_child(bar)
+		var detail: Control = null # The bubble lasts until used: icon only.
+		match POWERUP_SHOWS[kind]:
+			"bar":
+				detail = UI.timer_bar()
+			"count":
+				detail = UI.label("x3", 36, Color.WHITE, true)
+		if detail:
+			row.add_child(detail)
 		row.visible = false
 		_status.add_child(row)
-		_powerup_rows[kind] = [row, bar]
+		_powerup_rows[kind] = [row, detail]
+	_ignore_mouse(_status) # So touch steering works right over the status rows.
 
 	_pause_button = UI.button("", ICON_PAUSE, BLUE, Vector2(96, 96))
 	# Pinned to the top-right corner.
@@ -313,9 +375,9 @@ func _build_menu() -> void:
 	box.add_child(shop_button)
 	box.add_child(_toggle_row())
 
-	var tip := UI.label("Tilt your phone to steer", 30, Color.WHITE, true)
+	_menu_tip = UI.label(TIPS.tilt, 30, Color.WHITE, true)
 	box.add_child(UI.spacer(10))
-	box.add_child(tip)
+	box.add_child(_menu_tip)
 
 
 func _build_paused() -> void:
@@ -404,3 +466,10 @@ func _centered_column(parent: Control, height_fraction: float) -> VBoxContainer:
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_child(box)
 	return box
+
+
+func _ignore_mouse(control: Control) -> void:
+	control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in control.get_children():
+		if child is Control:
+			_ignore_mouse(child)

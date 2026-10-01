@@ -7,6 +7,8 @@ const TEXTURES := {
 	"jetpack": preload("res://assets/kenney/powerup_jetpack.png"),
 	"wings": preload("res://assets/kenney/powerup_wings.png"),
 	"bubble": preload("res://assets/kenney/powerup_bubble.png"),
+	"spring": preload("res://assets/art/powerup_spring.svg"),
+	"slowmo": preload("res://assets/art/powerup_slowmo.svg"),
 }
 const CARROT_SCALE := 0.55
 const POWERUP_SCALE := 0.8

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="110" height="104" viewBox="0 0 110 104">
+  <!-- Anchor: bottom-center (55,104) sits on top of the bunny's head. -->
+  <defs>
+    <clipPath id="dome"><path d="M9,92 A46,54 0 0 1 101,92 Q55,100 9,92 Z"/></clipPath>
+    <clipPath id="bladeL"><path d="M51,12 C42,7 22,4 11,6 C4,7.5 3,17 10,18.5 C22,21 42,18 51,15 Z"/></clipPath>
+    <clipPath id="bladeR"><path d="M59,12 C68,7 88,4 99,6 C106,7.5 107,17 100,18.5 C88,21 68,18 59,15 Z"/></clipPath>
+    <clipPath id="visor"><path d="M23,94.1 C29,107.2 81,107.2 87,94.1 Q55,97.9 23,94.1 Z"/></clipPath>
+  </defs>
+  <!-- Stem -->
+  <rect x="52" y="12" width="6" height="28" rx="2" fill="#5b5f6b"/>
+  <rect x="52" y="12" width="2.5" height="28" rx="1.2" fill="#7c8190"/>
+  <!-- Cap dome: blue sides, green / yellow / red front panels -->
+  <path d="M9,92 A46,54 0 0 1 101,92 Q55,100 9,92 Z" fill="#3b9bd6"/>
+  <g clip-path="url(#dome)">
+    <path d="M55,38 A42.5,54 0 0 0 12.5,92 L12.5,104 L55,104 Z" fill="#2ecc71"/>
+    <path d="M55,38 A42.5,54 0 0 1 97.5,92 L97.5,104 L55,104 Z" fill="#e74c3c"/>
+    <path d="M37.4,92 A17.6,54 0 0 1 72.6,92 L72.6,104 L37.4,104 Z" fill="#f7d046"/>
+    <path d="M0,83 Q55,91 110,83 L110,104 L0,104 Z" fill="#000" opacity="0.12"/>
+    <ellipse cx="34" cy="57" rx="6" ry="12" fill="#fff" opacity="0.3" transform="rotate(35 34 57)"/>
+  </g>
+  <!-- Visor -->
+  <path d="M23,94.1 C29,107.2 81,107.2 87,94.1 Q55,97.9 23,94.1 Z" fill="#2f86c2"/>
+  <g clip-path="url(#visor)">
+    <path d="M13,88 L23,91.1 C29,104.2 81,104.2 87,91.1 L97,88 L97,110 L13,110 Z" fill="#000" opacity="0.15"/>
+  </g>
+  <path d="M32,97.6 Q55,101.6 78,97.6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.3"/>
+  <!-- Top button -->
+  <ellipse cx="55" cy="38" rx="8" ry="4.5" fill="#e74c3c"/>
+  <ellipse cx="53" cy="36.8" rx="3" ry="1.5" fill="#fff" opacity="0.45"/>
+  <!-- Propeller blades -->
+  <path d="M51,12 C42,7 22,4 11,6 C4,7.5 3,17 10,18.5 C22,21 42,18 51,15 Z" fill="#e74c3c"/>
+  <g clip-path="url(#bladeL)">
+    <rect x="0" y="14" width="56" height="10" fill="#000" opacity="0.15"/>
+    <path d="M44,10.3 C34,7.3 20,6.8 13,8.3" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.45"/>
+  </g>
+  <path d="M59,12 C68,7 88,4 99,6 C106,7.5 107,17 100,18.5 C88,21 68,18 59,15 Z" fill="#f39c34"/>
+  <g clip-path="url(#bladeR)">
+    <rect x="54" y="14" width="56" height="10" fill="#000" opacity="0.15"/>
+    <path d="M66,10.3 C76,7.3 90,6.8 97,8.3" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.45"/>
+  </g>
+  <!-- Hub -->
+  <ellipse cx="55" cy="13.5" rx="7.5" ry="5.5" fill="#f7d046"/>
+  <ellipse cx="53" cy="11.5" rx="3" ry="1.8" fill="#fff" opacity="0.5"/>
+</svg>

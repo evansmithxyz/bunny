@@ -26,6 +26,15 @@ func _ready() -> void:
 	_sounds["powerup"] = _arpeggio([523.0, 659.0, 784.0, 1047.0], 0.07, 0.35)
 	_sounds["pop"] = _pop()
 	_sounds["jetpack"] = _rumble_loop()
+	_sounds["hoot"] = _hoot()
+	_sounds["screech"] = _screech()
+	_sounds["warble"] = _wobble(560.0, 760.0, 0.4, 16.0, 90.0, 0.35)
+	_sounds["beep"] = _arpeggio([1400.0, 0.0, 1400.0], 0.05, 0.22)
+	_sounds["spring"] = _wobble(260.0, 780.0, 0.28, 22.0, 40.0, 0.45)
+	_sounds["slow_down"] = _sweep(760.0, 180.0, 0.5, 0.4)
+	_sounds["speed_up"] = _sweep(180.0, 760.0, 0.4, 0.4)
+	_sounds["best"] = _arpeggio([523.0, 659.0, 784.0, 1047.0, 1319.0], 0.08, 0.35)
+	_sounds["space"] = _arpeggio([392.0, 523.0, 659.0, 784.0, 1047.0], 0.13, 0.3)
 	for i in VOICES:
 		var player := AudioStreamPlayer.new()
 		player.volume_db = -6.0
@@ -73,6 +82,45 @@ func _arpeggio(notes: Array, note_seconds: float, volume: float) -> AudioStreamW
 			# Last note rings out longer.
 			var fade := pow(1.0 - t, 1.5) if i == notes.size() - 1 else 1.0 - t * 0.5
 			samples.append(sin(phase) * volume * minf(t * 40.0, 1.0) * fade)
+	return _to_wav(samples)
+
+
+## Sine sweep with vibrato: springy boings and UFO warbles.
+func _wobble(from_hz: float, to_hz: float, seconds: float, wobble_hz: float, wobble_depth: float, volume: float) -> AudioStreamWAV:
+	var samples := PackedFloat32Array()
+	var phase := 0.0
+	var count := int(seconds * MIX_RATE)
+	for i in count:
+		var t := float(i) / count
+		var hz := lerpf(from_hz, to_hz, t) + sin(TAU * wobble_hz * i / MIX_RATE) * wobble_depth
+		phase += TAU * hz / MIX_RATE
+		samples.append(sin(phase) * volume * _envelope(t))
+	return _to_wav(samples)
+
+
+## Two soft low "hoo" notes, like an owl.
+func _hoot() -> AudioStreamWAV:
+	var samples := PackedFloat32Array()
+	for note in [[400.0, 0.16], [330.0, 0.24]]:
+		var phase := 0.0
+		var count := int(note[1] * MIX_RATE)
+		for i in count:
+			var t := float(i) / count
+			phase += TAU * note[0] * (1.0 - 0.06 * t) / MIX_RATE
+			samples.append((sin(phase) + 0.2 * sin(phase * 2.0)) * 0.35 * _envelope(t))
+	return _to_wav(samples)
+
+
+## High, rough, falling cry, like an eagle.
+func _screech() -> AudioStreamWAV:
+	var samples := PackedFloat32Array()
+	var phase := 0.0
+	var count := int(0.38 * MIX_RATE)
+	for i in count:
+		var t := float(i) / count
+		phase += TAU * lerpf(1900.0, 1150.0, t) / MIX_RATE
+		var saw := fmod(phase / TAU, 1.0) * 2.0 - 1.0
+		samples.append((saw * 0.55 + sin(phase) * 0.3 + randf_range(-0.25, 0.25)) * 0.22 * _envelope(t))
 	return _to_wav(samples)
 
 

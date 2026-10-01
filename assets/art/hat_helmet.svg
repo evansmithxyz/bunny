@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="230" height="230" viewBox="0 0 230 230">
+  <!-- Glass bubble helmet: encloses the whole head and ears. Bubble centre (115,112), r=104. -->
+  <defs>
+    <clipPath id="collar">
+      <path d="M45,208 C45,200 52,198 60,199 Q115,206 170,199 C178,198 185,200 185,208 L185,216 C185,222 180,226 170,225 Q115,232 60,225 C50,226 45,222 45,216 Z"/>
+    </clipPath>
+  </defs>
+  <!-- Tiny antenna on the upper-right of the bubble -->
+  <path d="M167,22 L174.5,9" stroke="#9aa7b4" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="174.5" cy="8.9" r="4.5" fill="#f39c34"/>
+  <circle cx="173.2" cy="7.5" r="1.5" fill="#fff" opacity="0.6"/>
+  <!-- Glass: faint tint, a slightly stronger tint near the edge, thin rim -->
+  <circle cx="115" cy="112" r="104" fill="#bfe9ff" opacity="0.22"/>
+  <circle cx="115" cy="112" r="97" fill="none" stroke="#bfe9ff" stroke-width="10" opacity="0.18"/>
+  <circle cx="115" cy="112" r="104" fill="none" stroke="#9fd3f0" stroke-width="4" opacity="0.6"/>
+  <circle cx="115" cy="112" r="100.5" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.35"/>
+  <!-- Antenna mount sitting on the rim -->
+  <path d="M162.2,19.2 A5.5,5.5 0 0 1 171.8,24.8 Z" fill="#f4f6fb"/>
+  <path d="M162.2,19.2 L171.8,24.8" stroke="#c9d3dd" stroke-width="2" stroke-linecap="round"/>
+  <!-- Highlights: two arcs upper-left, faint reflection lower-right -->
+  <path d="M29.4,84.2 A90,90 0 0 1 81.3,28.6" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" opacity="0.7"/>
+  <path d="M93.2,24.7 A90,90 0 0 1 108.7,22.2" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" opacity="0.7"/>
+  <path d="M198.4,150.9 A92,92 0 0 1 167.8,187.4" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity="0.35"/>
+  <!-- Neck collar ring -->
+  <path d="M45,208 C45,200 52,198 60,199 Q115,206 170,199 C178,198 185,200 185,208 L185,216 C185,222 180,226 170,225 Q115,232 60,225 C50,226 45,222 45,216 Z" fill="#f4f6fb"/>
+  <g clip-path="url(#collar)">
+    <path d="M40,218 Q115,230 190,218 L190,234 L40,234 Z" fill="#c9d3dd"/>
+    <path d="M40,197 Q115,206 190,197 L190,202 Q115,211 40,202 Z" fill="#c9d3dd" opacity="0.7"/>
+    <rect x="40" y="220" width="150" height="14" fill="#000" opacity="0.08"/>
+    <ellipse cx="62" cy="210" rx="10" ry="3" fill="#fff" opacity="0.8"/>
+  </g>
+  <!-- Orange badge on the front of the collar -->
+  <rect x="103" y="207" width="24" height="11" rx="4" fill="#f39c34"/>
+  <rect x="103" y="213" width="24" height="5" rx="2.5" fill="#e0822a"/>
+  <rect x="107" y="209" width="8" height="2.5" rx="1.2" fill="#fff" opacity="0.5"/>
+</svg>

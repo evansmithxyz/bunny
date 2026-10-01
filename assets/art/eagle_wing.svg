@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="222" height="70" viewBox="-208 -42 222 70">
+  <!-- Pivot (the shoulder) is at 0,0; the wing points backward (-x). Long, broad, with finger-like primaries. -->
+  <!-- Primary "fingers" -->
+  <path d="M-128,-30 C-154,-36 -184,-38 -200,-34 C-196,-26 -172,-20 -132,-16 Z" fill="#452b1e"/>
+  <path d="M-132,-20 C-158,-22 -188,-22 -204,-17 C-198,-9 -170,-6 -132,-6 Z" fill="#452b1e"/>
+  <path d="M-132,-9 C-160,-8 -186,-5 -200,0 C-192,7 -164,7 -130,4 Z" fill="#452b1e"/>
+  <path d="M-128,0 C-150,4 -172,9 -184,15 C-172,21 -150,17 -122,10 Z" fill="#452b1e"/>
+  <!-- Main wing -->
+  <path d="M10,0 C4,-28 -70,-38 -140,-29 L-146,-6 L-132,10 C-122,18 -112,20 -104,16 C-96,22 -84,22 -76,17 C-68,22 -56,22 -48,16 C-38,20 -26,19 -18,15 C-6,12 4,7 10,0 Z" fill="#452b1e"/>
+  <!-- Lighter covert band -->
+  <path d="M8,-1 C-2,-24 -70,-32 -136,-23 C-80,-22 -24,-13 8,-1 Z" fill="#7a5541"/>
+  <!-- Feather separations -->
+  <path d="M-104,13 L-101,5 M-76,14 L-74,5 M-48,13 L-46,5" stroke="#5b3a29" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

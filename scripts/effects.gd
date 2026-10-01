@@ -50,7 +50,11 @@ func popup(at: Vector2, text: String, color: Color = Color.WHITE, size: int = 36
 	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	label.add_theme_constant_override("outline_size", 8)
 	add_child(label)
-	label.position = at - label.get_combined_minimum_size() / 2.0
+	var box := label.get_combined_minimum_size()
+	label.position = at - box / 2.0
+	# Keep it on screen when the bunny is near a side (the camera spans x = 0..width).
+	var width := get_viewport_rect().size.x
+	label.position.x = clampf(label.position.x, 8.0, maxf(8.0, width - box.x - 8.0))
 
 	var tween := label.create_tween().set_parallel()
 	tween.tween_property(label, "position:y", label.position.y - 90.0, 0.8) \

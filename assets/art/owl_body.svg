@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="118" viewBox="-140 -80 256 118">
+  <defs>
+    <clipPath id="body"><ellipse cx="-4" cy="1" rx="82" ry="29"/></clipPath>
+    <clipPath id="head"><circle cx="70" cy="-22" r="37"/></clipPath>
+  </defs>
+  <!-- Short fanned tail with rounded feather tips -->
+  <path d="M-68,-10 L-116,-20 Q-130,-18 -124,-8 Q-134,-1 -124,6 Q-130,16 -116,16 L-68,12 Z" fill="#6b5444"/>
+  <path d="M-72,-4 L-112,-8 Q-118,-1 -112,5 L-72,6 Z" fill="#a08670" opacity="0.55"/>
+  <!-- Feathery ear tufts (behind the head) -->
+  <path d="M42,-46 Q38,-60 30,-70 Q38,-67 44,-64 Q44,-70 42,-76 Q54,-68 60,-55 Z" fill="#8a6f5a"/>
+  <path d="M84,-56 Q92,-66 100,-74 Q101,-70 99,-65 Q104,-67 111,-67 Q105,-56 100,-44 Z" fill="#8a6f5a"/>
+  <!-- Body -->
+  <ellipse cx="-4" cy="1" rx="82" ry="29" fill="#8a6f5a"/>
+  <g clip-path="url(#body)">
+    <ellipse cx="-16" cy="-24" rx="56" ry="10" fill="#fff" opacity="0.1"/>
+    <ellipse cx="14" cy="27" rx="70" ry="23" fill="#e8d5b5"/>
+    <!-- Belly speckles -->
+    <g stroke="#a08670" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M-26,18 l4,3 l4,-3"/>
+      <path d="M-4,13 l4,3 l4,-3"/>
+      <path d="M18,12 l4,3 l4,-3"/>
+      <path d="M40,14 l4,3 l4,-3"/>
+      <path d="M-14,24 l4,3 l4,-3"/>
+      <path d="M8,21 l4,3 l4,-3"/>
+      <path d="M30,21 l4,3 l4,-3"/>
+    </g>
+    <rect x="-90" y="22" width="180" height="14" fill="#000" opacity="0.1"/>
+  </g>
+  <!-- Big round head -->
+  <circle cx="70" cy="-22" r="37" fill="#8a6f5a"/>
+  <g clip-path="url(#head)">
+    <ellipse cx="60" cy="-58" rx="30" ry="10" fill="#fff" opacity="0.07"/>
+    <!-- Facial disk: dark rim, then pale face -->
+    <circle cx="75" cy="-22" r="22" fill="#6b5444"/>
+    <circle cx="98" cy="-22" r="18.5" fill="#6b5444"/>
+    <circle cx="75" cy="-22" r="19" fill="#e8d5b5"/>
+    <circle cx="98" cy="-22" r="15.5" fill="#e8d5b5"/>
+  </g>
+  <!-- Big round eyes -->
+  <circle cx="75" cy="-23" r="12" fill="#e0a52a"/>
+  <circle cx="75" cy="-23" r="10.4" fill="#f7c331"/>
+  <circle cx="77" cy="-23" r="6" fill="#2a1d12"/>
+  <circle cx="79.4" cy="-25.6" r="2.3" fill="#fff"/>
+  <circle cx="97.4" cy="-23" r="9.3" fill="#e0a52a"/>
+  <circle cx="97.4" cy="-23" r="8" fill="#f7c331"/>
+  <circle cx="99" cy="-23" r="4.7" fill="#2a1d12"/>
+  <circle cx="100.9" cy="-25" r="1.8" fill="#fff"/>
+  <!-- Small hooked beak -->
+  <path d="M82,-15 Q87,-18 92,-15 Q96,-8 90,0 Q89,-6 85,-8 Q81,-10 82,-15 Z" fill="#f2b134"/>
+  <path d="M85,-8 Q89,-6 90,0 Q96,-8 93,-12 Q90,-9 85,-8 Z" fill="#d9961f"/>
+</svg>

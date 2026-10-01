@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="280" viewBox="0 0 420 280">
+  <defs>
+    <clipPath id="planet"><circle cx="0" cy="0" r="90"/></clipPath>
+    <clipPath id="ringback"><path transform="rotate(-15)" d="M-194,0 A194,44 0 0,1 194,0 L114,0 A114,25.86 0 0,0 -114,0 Z"/></clipPath>
+  </defs>
+  <g transform="translate(210 140)">
+    <!-- Ring, drawn whole BEHIND the planet (its back half shows above/beside it);
+         the front half is redrawn over the planet further down -->
+    <g transform="rotate(-15)" fill-rule="evenodd">
+      <path d="M-124,0 A124,28.12 0 1,0 124,0 A124,28.12 0 1,0 -124,0 Z M-114,0 A114,25.86 0 1,0 114,0 A114,25.86 0 1,0 -114,0 Z" fill="#f5d798"/>
+      <path d="M-162,0 A162,36.74 0 1,0 162,0 A162,36.74 0 1,0 -162,0 Z M-124,0 A124,28.12 0 1,0 124,0 A124,28.12 0 1,0 -124,0 Z" fill="#e8a94f"/>
+      <ellipse cx="0" cy="0" rx="160" ry="36.29" fill="none" stroke="#cf8e3e" stroke-width="3"/>
+      <path d="M-194,0 A194,44 0 1,0 194,0 A194,44 0 1,0 -194,0 Z M-162,0 A162,36.74 0 1,0 162,0 A162,36.74 0 1,0 -162,0 Z" fill="#f7c873"/>
+      <ellipse cx="0" cy="0" rx="180" ry="40.82" fill="none" stroke="#fbe0a8" stroke-width="2.5" opacity="0.8"/>
+    </g>
+    <!-- Planet's shadow falling on the back of the ring (lower-right of the planet) -->
+    <g clip-path="url(#ringback)">
+      <circle cx="16" cy="12" r="90" fill="#000" opacity="0.14"/>
+    </g>
+
+    <!-- Planet -->
+    <circle cx="0" cy="0" r="90" fill="#8e6bd6"/>
+    <g clip-path="url(#planet)">
+      <!-- Lighter bands, parallel to the ring -->
+      <g transform="rotate(-15)">
+        <path d="M-100,-62 Q0,-38 100,-62 L100,-50 Q0,-26 -100,-50 Z" fill="#a284e2"/>
+        <path d="M-100,-30 Q0,-2 100,-30 L100,-20 Q0,12 -100,-20 Z" fill="#9c7bde"/>
+        <path d="M-100,58 Q0,74 100,58 L100,66 Q0,82 -100,66 Z" fill="#a284e2"/>
+      </g>
+      <!-- Soft craters -->
+      <ellipse cx="-18.5" cy="-38.5" rx="11" ry="9" fill="#a888e4" opacity="0.6"/>
+      <ellipse cx="-20" cy="-40" rx="11" ry="9" fill="#7a5ac8"/>
+      <ellipse cx="-22" cy="-42" rx="6.5" ry="5" fill="#6f4fb8" opacity="0.45"/>
+
+      <ellipse cx="23.2" cy="-60.8" rx="8" ry="6.5" fill="#a888e4" opacity="0.6"/>
+      <ellipse cx="22" cy="-62" rx="8" ry="6.5" fill="#7a5ac8"/>
+      <ellipse cx="20.6" cy="-63.4" rx="4.5" ry="3.5" fill="#6f4fb8" opacity="0.45"/>
+
+      <ellipse cx="-10.6" cy="71.2" rx="10" ry="7" fill="#a888e4" opacity="0.6"/>
+      <ellipse cx="-12" cy="70" rx="10" ry="7" fill="#7a5ac8"/>
+      <ellipse cx="-13.6" cy="68.6" rx="5.5" ry="3.8" fill="#6f4fb8" opacity="0.45"/>
+
+      <ellipse cx="-60.8" cy="5.2" rx="6" ry="7" fill="#a888e4" opacity="0.6"/>
+      <ellipse cx="-62" cy="4" rx="6" ry="7" fill="#7a5ac8"/>
+      <ellipse cx="-63" cy="2.6" rx="3.2" ry="4" fill="#6f4fb8" opacity="0.45"/>
+      <!-- Lower-right shading crescent -->
+      <path fill-rule="evenodd" fill="#6f4fb8" opacity="0.9"
+        d="M-90,0 A90,90 0 1,0 90,0 A90,90 0 1,0 -90,0 Z M-110,-16 A92,92 0 1,0 74,-16 A92,92 0 1,0 -110,-16 Z"/>
+      <!-- Shadow the front ring casts on the planet -->
+      <g transform="rotate(-15) translate(0 8)">
+        <path d="M-194,0 A194,44 0 0,0 194,0 L114,0 A114,25.86 0 0,1 -114,0 Z" fill="#000" opacity="0.14"/>
+      </g>
+      <!-- Soft highlight -->
+      <ellipse cx="-50" cy="-52" rx="26" ry="11" transform="rotate(-42 -50 -52)" fill="#fff" opacity="0.2"/>
+      <circle cx="-70" cy="-22" r="4.5" fill="#fff" opacity="0.22"/>
+    </g>
+
+    <!-- Ring, FRONT half (near side, passes in front of the planet) -->
+    <g transform="rotate(-15)">
+      <path d="M-124,0 A124,28.12 0 0,0 124,0 L114,0 A114,25.86 0 0,1 -114,0 Z" fill="#f5d798"/>
+      <path d="M-162,0 A162,36.74 0 0,0 162,0 L124,0 A124,28.12 0 0,1 -124,0 Z" fill="#e8a94f"/>
+      <path d="M-160,0 A160,36.29 0 0,0 160,0" fill="none" stroke="#cf8e3e" stroke-width="3"/>
+      <path d="M-194,0 A194,44 0 0,0 194,0 L162,0 A162,36.74 0 0,1 -162,0 Z" fill="#f7c873"/>
+      <path d="M-180,0 A180,40.82 0 0,0 180,0" fill="none" stroke="#fbe0a8" stroke-width="2.5" opacity="0.8"/>
+    </g>
+  </g>
+</svg>

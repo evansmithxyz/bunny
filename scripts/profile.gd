@@ -1,6 +1,6 @@
 extends RefCounted
 ## The player's carrots and shop progress, stored in the save file:
-## [scores] carrots, and [shop] owned / color / hat / upgrade levels.
+## [scores] carrots, and [shop] owned / color / hat / trail / upgrade levels.
 
 const Catalog := preload("res://scripts/catalog.gd")
 
@@ -43,6 +43,14 @@ var hat: String:
 		_save()
 
 
+var trail: String:
+	get:
+		return _cfg.get_value("shop", "trail", "none")
+	set(value):
+		_cfg.set_value("shop", "trail", value)
+		_save()
+
+
 func owns(id: String) -> bool:
 	return id in ["brown", "none"] or id in _cfg.get_value("shop", "owned", [])
 
@@ -78,7 +86,7 @@ func buy(id: String) -> bool:
 
 ## Price of buying `id` now, or -1 if it can't be bought (owned, maxed, secret).
 func price_of(id: String) -> int:
-	for item: Dictionary in Catalog.COLORS + Catalog.HATS:
+	for item: Dictionary in Catalog.COLORS + Catalog.HATS + Catalog.TRAILS:
 		if item.id == id:
 			return -1 if owns(id) or item.price < 0 else item.price
 	var upgrade := Catalog.find(Catalog.UPGRADES, id)

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Trail particle: chunky gold star centered at 16,16 with soft rounded tips. -->
+  <defs>
+    <clipPath id="star"><path d="M14.7,3.8 Q16,1.2 17.3,3.8 L19.8,9 Q20.3,10 21.5,10.2 L27.2,11 Q30.1,11.4 28,13.5 L23.9,17.5 Q23,18.3 23.2,19.4 L24.2,25.1 Q24.7,28 22.1,26.6 L17,23.9 Q16,23.4 15,23.9 L9.9,26.6 Q7.3,28 7.8,25.1 L8.8,19.4 Q9,18.3 8.1,17.5 L4,13.5 Q1.9,11.4 4.8,11 L10.5,10.2 Q11.7,10 12.2,9 Z"/></clipPath>
+  </defs>
+  <path d="M14.7,3.8 Q16,1.2 17.3,3.8 L19.8,9 Q20.3,10 21.5,10.2 L27.2,11 Q30.1,11.4 28,13.5 L23.9,17.5 Q23,18.3 23.2,19.4 L24.2,25.1 Q24.7,28 22.1,26.6 L17,23.9 Q16,23.4 15,23.9 L9.9,26.6 Q7.3,28 7.8,25.1 L8.8,19.4 Q9,18.3 8.1,17.5 L4,13.5 Q1.9,11.4 4.8,11 L10.5,10.2 Q11.7,10 12.2,9 Z" fill="#f7d046"/>
+  <g clip-path="url(#star)">
+    <!-- Lit facets facing upper-left -->
+    <polygon points="16,16 -12.5,6.7 -1.6,-8.3 16,-14" fill="#fff0a0"/>
+    <!-- Shadowed facets facing lower-right -->
+    <polygon points="16,16 44.5,6.7 44.5,25.3 33.6,40.3" fill="#e0a21b"/>
+  </g>
+  <!-- Glint on the top arm -->
+  <path d="M14.9,5.6 L13.3,8.9" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+</svg>

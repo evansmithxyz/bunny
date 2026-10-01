@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Mostly white so the trail can tint it; centered at 16,16. -->
+  <defs>
+    <clipPath id="star"><path d="M16,1 Q17.7,14.3 30.5,16 Q17.7,17.7 16,31 Q14.3,17.7 1.5,16 Q14.3,14.3 16,1 Z"/></clipPath>
+  </defs>
+  <!-- Four-pointed twinkle with concave sides -->
+  <path d="M16,1 Q17.7,14.3 30.5,16 Q17.7,17.7 16,31 Q14.3,17.7 1.5,16 Q14.3,14.3 16,1 Z" fill="#ffffff"/>
+  <!-- Faint shading on the lower-right facet (light from the upper left) -->
+  <g clip-path="url(#star)">
+    <path d="M16,16 L16,32 L32,32 L32,16 Z" fill="#000" opacity="0.06"/>
+  </g>
+  <!-- Pale yellow glowing center -->
+  <path d="M16,8.5 Q17,15 23.5,16 Q17,17 16,23.5 Q15,17 8.5,16 Q15,15 16,8.5 Z" fill="#fff3a0"/>
+  <circle cx="16" cy="16" r="2.8" fill="#fff3a0"/>
+  <!-- Soft highlight -->
+  <circle cx="15" cy="15" r="1.2" fill="#ffffff" opacity="0.85"/>
+</svg>

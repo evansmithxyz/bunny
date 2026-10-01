@@ -15,11 +15,12 @@ const Bunny := preload("res://scripts/bunny.gd")
 const ICON_CARROT := preload("res://assets/kenney/carrots.png")
 const ICON_HOME := preload("res://assets/ui/home.svg")
 
-const TABS := ["Colors", "Hats", "Upgrades"]
+const TABS := ["Colors", "Hats", "Trails", "Upgrades"]
 const COLUMNS := 4
 const CONFIRM_SECONDS := 2.5
 const TOP_MARGIN := 60.0
 const PREVIEW_SCALE := 0.9 # Bunny art pixels to screen pixels in the preview.
+const PREVIEW_HEADROOM := 50.0 # Extra room above the bunny for tall hats (the helmet).
 const HEAD_TOP_PX := 49.0 # Top of the head in the standing sprite.
 const HAT_SINK_PX := 10.0 # Hats sit a little down onto the head.
 
@@ -75,7 +76,8 @@ func _ready() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 12)
 	for i in TABS.size():
-		var tab := UI.button(TABS[i], null, UI.BLUE, Vector2(0, 84), 36)
+		var tab := UI.button(TABS[i], null, UI.BLUE, Vector2(0, 84), 30)
+		_tighten(tab) # Four tabs share the width.
 		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tab.pressed.connect(_on_tab_pressed.bind(i))
 		tabs.add_child(tab)
@@ -110,6 +112,7 @@ func refresh() -> void:
 	_update_preview()
 	for i in _tab_buttons.size():
 		UI.style_button(_tab_buttons[i], UI.ORANGE if i == _tab else UI.BLUE)
+		_tighten(_tab_buttons[i]) # Restyling resets the padding.
 	for child in _scroll.get_children():
 		_scroll.remove_child(child)
 		child.queue_free()
@@ -119,6 +122,8 @@ func refresh() -> void:
 		1:
 			_scroll.add_child(_item_grid(Catalog.HATS, "hat"))
 		2:
+			_scroll.add_child(_item_grid(Catalog.TRAILS, "trail"))
+		3:
 			_scroll.add_child(_upgrade_list())
 
 
@@ -166,10 +171,13 @@ func _on_item_pressed(id: String, kind: String) -> void:
 
 
 func _wear(id: String, kind: String, announce: bool = true) -> void:
-	if kind == "color":
-		profile.color = id
-	else:
-		profile.hat = id
+	match kind:
+		"color":
+			profile.color = id
+		"hat":
+			profile.hat = id
+		"trail":
+			profile.trail = id
 	if announce:
 		equipped.emit()
 	refresh()
@@ -198,7 +206,7 @@ func _item_grid(items: Array, kind: String) -> GridContainer:
 		var box := UI.card(grid, 10, 6)
 		box.get_parent().size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		box.add_child(_thumbnail(item, kind))
-		var name_label := UI.label(item.name, 24, UI.INK)
+		var name_label := UI.label(item.name, 24 if item.name.length() <= 10 else 19, UI.INK) # Long names shrink to fit.
 		name_label.clip_text = true
 		box.add_child(name_label)
 		box.add_child(_item_button(item.id, kind))
@@ -207,7 +215,7 @@ func _item_grid(items: Array, kind: String) -> GridContainer:
 
 func _item_button(id: String, kind: String) -> Button:
 	var owned := profile.owns(id)
-	var worn := (profile.color if kind == "color" else profile.hat) == id
+	var worn: bool = {"color": profile.color, "hat": profile.hat, "trail": profile.trail}[kind] == id
 	var price := profile.price_of(id)
 	var button: Button
 	if worn:
@@ -297,6 +305,24 @@ func _thumbnail(item: Dictionary, kind: String) -> Control:
 	if kind == "hat":
 		var hat := UI.icon(item.get("texture"), 80) # "No hat" shows an empty space.
 		return hat
+	if kind == "trail":
+		# Three particles in a little diagonal, like the trail they make, on a bit of
+		# sky so white sparkles show up on the white card.
+		var box := Panel.new()
+		var sky := StyleBoxFlat.new()
+		sky.bg_color = Color(0.53, 0.81, 0.98)
+		sky.set_corner_radius_all(18)
+		box.add_theme_stylebox_override("panel", sky)
+		box.custom_minimum_size = Vector2(96, 96)
+		box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER # Don't stretch to the card width.
+		if item.has("texture"):
+			for i in 3:
+				var dot := UI.icon(item.texture, 44 - i * 9)
+				dot.position = Vector2(56 - i * 26, 14 + i * 22)
+				dot.size = dot.custom_minimum_size
+				dot.modulate.a = 1.0 - i * 0.25
+				box.add_child(dot)
+		return box
 	var body := UI.icon(_bunny_texture(item.id), 96)
 	body.material = Catalog.color_material(item.id)
 	return body
@@ -313,19 +339,19 @@ func _build_preview() -> Control:
 	style.bg_color = Color(1, 1, 1, 0.25)
 	style.set_corner_radius_all(36)
 	panel.add_theme_stylebox_override("panel", style)
-	panel.custom_minimum_size = Vector2(0, 230)
+	panel.custom_minimum_size = Vector2(0, 230 + PREVIEW_HEADROOM)
 
 	var center := CenterContainer.new()
 	panel.add_child(center)
 	var stage := Control.new() # Children placed by hand, not by a container.
 	var body_size := Vector2(120, 201) * PREVIEW_SCALE
-	stage.custom_minimum_size = Vector2(200, body_size.y + 20)
+	stage.custom_minimum_size = Vector2(200, body_size.y + 20 + PREVIEW_HEADROOM)
 	center.add_child(stage)
 
 	_preview_body = TextureRect.new()
 	_preview_body.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_preview_body.size = body_size
-	_preview_body.position = Vector2((200 - body_size.x) / 2.0, 20)
+	_preview_body.position = Vector2((200 - body_size.x) / 2.0, 20 + PREVIEW_HEADROOM)
 	stage.add_child(_preview_body)
 	_preview_hat = TextureRect.new()
 	_preview_hat.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -342,8 +368,10 @@ func _update_preview() -> void:
 		var tex: Texture2D = hat_item.texture
 		# Same proportions as in the game, where the hat is drawn at its "scale"
 		# relative to the bunny art.
-		var size: Vector2 = tex.get_size() * PREVIEW_SCALE * hat_item.scale
+		var art_scale: float = PREVIEW_SCALE * hat_item.scale
+		var size := tex.get_size() * art_scale
+		var pivot: Vector2 = hat_item.get("pivot", Vector2(tex.get_width() / 2.0, tex.get_height()))
 		var head := _preview_body.position + Vector2(_preview_body.size.x / 2.0, (HEAD_TOP_PX + HAT_SINK_PX) * PREVIEW_SCALE)
 		_preview_hat.texture = tex
 		_preview_hat.size = size
-		_preview_hat.position = head - Vector2(size.x / 2.0, size.y)
+		_preview_hat.position = head - pivot * art_scale

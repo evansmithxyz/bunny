@@ -1,5 +1,6 @@
 extends RefCounted
-## Everything sold in the carrot shop. Change prices or add items here.
+## Everything sold in the carrot shop: colors, hats, trails and upgrades.
+## Change prices or add items here.
 ## Colors recolor the brown bunny with the bunny_color shader:
 ## [hue shift, saturation, brightness]. Purple is the title-screen easter egg.
 
@@ -16,12 +17,26 @@ const COLORS := [
 
 # "scale" sizes the hat art relative to the bunny art: as big as possible while
 # the ears still poke up around it (the narrow party hat can be bigger).
+# Hats sit with the bottom middle of their art on top of the head; "pivot"
+# (art pixels) overrides that point, e.g. the helmet is centered on the head.
 const HATS := [
 	{"id": "none", "name": "No hat", "price": 0},
 	{"id": "party", "name": "Party hat", "price": 75, "scale": 0.85, "texture": preload("res://assets/art/hat_party.svg")},
+	{"id": "beanie", "name": "Beanie", "price": 100, "scale": 0.7, "texture": preload("res://assets/art/hat_beanie.svg")},
 	{"id": "flower", "name": "Flower", "price": 120, "scale": 0.7, "texture": preload("res://assets/art/hat_flower.svg")},
+	{"id": "cowboy", "name": "Cowboy hat", "price": 150, "scale": 0.7, "texture": preload("res://assets/art/hat_cowboy.svg")},
+	{"id": "propeller", "name": "Propeller", "price": 180, "scale": 0.7, "texture": preload("res://assets/art/hat_propeller.svg")},
 	{"id": "top", "name": "Top hat", "price": 200, "scale": 0.7, "texture": preload("res://assets/art/hat_top.svg")},
+	{"id": "helmet", "name": "Space helmet", "price": 300, "scale": 1.0, "pivot": Vector2(115, 129), "texture": preload("res://assets/art/hat_helmet.svg")},
 	{"id": "crown", "name": "Crown", "price": 400, "scale": 0.7, "texture": preload("res://assets/art/hat_crown.svg")},
+]
+
+# Particles that stream behind the bunny.
+const TRAILS := [
+	{"id": "none", "name": "No trail", "price": 0},
+	{"id": "sparkles", "name": "Sparkles", "price": 150, "texture": preload("res://assets/art/trail_sparkle.svg")},
+	{"id": "hearts", "name": "Hearts", "price": 150, "texture": preload("res://assets/art/trail_heart.svg")},
+	{"id": "stars", "name": "Stars", "price": 200, "texture": preload("res://assets/art/trail_star.svg")},
 ]
 
 # "prices" has one entry per level.

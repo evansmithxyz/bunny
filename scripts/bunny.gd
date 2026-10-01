@@ -54,6 +54,8 @@ const TEX_FLAME := preload("res://assets/kenney/flame.png")
 const TEX_WING_LEFT := preload("res://assets/kenney/wing_left.png")
 const TEX_WING_RIGHT := preload("res://assets/kenney/wing_right.png")
 const TEX_BUBBLE := preload("res://assets/kenney/bubble.png")
+const TEX_SPRING := preload("res://assets/art/spring_coil.svg")
+const SPRING_FEET_X := 11.0 # Springs hang under each foot.
 
 ## A child node that draws one layer by calling back into the bunny.
 class Layer extends Node2D:
@@ -72,20 +74,28 @@ var hurt := false # Shows the hurt face (set on game over).
 var controls_enabled := true # Off on the menu, where the bunny just hops in place.
 var tilt_right := Vector3.RIGHT # Direction that counts as "tilt right" (see calibrate_right).
 var tilt_sensitivity := 1.0 # Player's multiplier from the tilt screen.
+var control_mode := "tilt" # "tilt" or "touch" (hold the left/right side of the screen).
 var color := "brown": # A Catalog.COLORS id.
 	set(value):
 		color = value
 		_apply_color()
 var hat := "none" # A Catalog.HATS id.
+var trail := "none": # A Catalog.TRAILS id.
+	set(value):
+		trail = value
+		_apply_trail()
 
 var jetpack_duration := JETPACK_TIME # Longer with the shop upgrade.
 var wings_duration := WINGS_TIME
 var jetpack_time := 0.0 # Seconds of jetpack left.
 var wings_time := 0.0 # Seconds of gliding left.
 var has_bubble := false # Saves the bunny once from falling off the screen.
+var spring_bounces := 0 # Spring shoes: this many super bounces left.
 
 var _body: Layer
 var _front: Layer
+var _trail_particles: CPUParticles2D
+var _touches := {} # Touch index -> x. In order of pressing, so the newest is last.
 var _knocked_time := 0.0 # Steering is disabled while knocked sideways.
 var _anim_time := 0.0
 var _ready_time := 0.0
@@ -93,11 +103,14 @@ var _squash := Vector2.ONE # Stretch around the feet, springs back to 1.
 
 
 func _ready() -> void:
+	_trail_particles = _make_trail_particles() # First, so it draws behind the body.
+	add_child(_trail_particles)
 	_body = Layer.new(_paint_body)
 	_front = Layer.new(_paint_front)
 	add_child(_body)
 	add_child(_front)
 	_apply_color()
+	_apply_trail()
 
 
 func step(delta: float) -> void:
@@ -124,6 +137,8 @@ func step(delta: float) -> void:
 	_ready_time -= delta
 	_anim_time += delta
 	_squash = _squash.lerp(Vector2.ONE, clampf(8.0 * delta, 0.0, 1.0))
+	if _trail_particles:
+		_trail_particles.emitting = trail != "none" and velocity.length() > 150.0
 	redraw()
 
 
@@ -159,8 +174,80 @@ func _read_horizontal_input() -> float:
 	var keys := Input.get_axis("ui_left", "ui_right")
 	if keys != 0.0:
 		return keys
-
+	if control_mode == "touch":
+		return touch_direction()
 	return steer(tilt_amount(Input.get_accelerometer(), tilt_right), tilt_sensitivity)
+
+
+# --- Touch steering -------------------------------------------------------------
+# Taps on buttons (like pause) are handled by the UI first and never get here.
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		_touches.erase(event.index) # Re-added at the end, so the newest press wins.
+		if event.pressed:
+			_touches[event.index] = event.position.x
+	elif event is InputEventScreenDrag:
+		# Also picks up a finger that stayed down through a pause (its press was
+		# cleared), so steering resumes as soon as it moves.
+		_touches[event.index] = event.position.x
+	elif not DisplayServer.is_touchscreen_available():
+		# Mouse stands in for a finger on a PC (phones send real touches instead).
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			_touches.erase(-1)
+			if event.pressed:
+				_touches[-1] = event.position.x
+		elif event is InputEventMouseMotion and _touches.has(-1):
+			_touches[-1] = event.position.x
+
+
+## -1 while holding the left half of the screen, 1 for the right half, else 0.
+func touch_direction() -> float:
+	if _touches.is_empty():
+		return 0.0
+	var x: float = _touches.values()[-1]
+	return 1.0 if x >= get_viewport_rect().size.x / 2.0 else -1.0
+
+
+## Forgets fingers that are down, e.g. when a pause screen swallows the release.
+func clear_touches() -> void:
+	_touches.clear()
+
+
+# --- Shop trail -----------------------------------------------------------------
+
+func _make_trail_particles() -> CPUParticles2D:
+	var p := CPUParticles2D.new()
+	p.local_coords = false # Particles stay where they were dropped, making a trail.
+	p.emitting = false
+	p.amount = 28
+	p.lifetime = 0.8
+	p.position = Vector2(0, -20)
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 14.0
+	p.direction = Vector2.DOWN
+	p.spread = 60.0
+	p.initial_velocity_min = 10.0
+	p.initial_velocity_max = 50.0
+	p.gravity = Vector2.ZERO
+	p.angle_min = -180.0
+	p.angle_max = 180.0
+	p.scale_amount_min = 0.45
+	p.scale_amount_max = 0.85
+	var fade := Gradient.new()
+	fade.set_color(0, Color.WHITE)
+	fade.set_color(1, Color(1, 1, 1, 0))
+	p.color_ramp = fade
+	return p
+
+
+func _apply_trail() -> void:
+	if _trail_particles == null:
+		return
+	var item := Catalog.find(Catalog.TRAILS, trail)
+	_trail_particles.texture = item.get("texture")
+	if trail == "none":
+		_trail_particles.emitting = false
 
 
 ## How far the phone leans right (+) or left (-) of center: -1 to 1.
@@ -244,6 +331,12 @@ func _paint(ci: CanvasItem, painter: Callable) -> void:
 
 
 func _paint_back_at(ci: CanvasItem, base: Transform2D) -> void:
+	if spring_bounces > 0:
+		# A spring under each foot; squashed for a moment after landing.
+		var squash := 0.55 if _ready_time > 0.0 else 1.0
+		for side in [-1.0, 1.0]:
+			ci.draw_set_transform_matrix(base * Transform2D(0.0, Vector2(0.5, 0.5 * squash), 0.0, Vector2(SPRING_FEET_X * side, -2.0)))
+			ci.draw_texture(TEX_SPRING, Vector2(-TEX_SPRING.get_width() / 2.0, 0.0))
 	if _gear_visible(jetpack_time):
 		_draw_piece(ci, base, TEX_JETPACK, TEX_JETPACK.get_size() / 2.0, Vector2(0, -48), 0.0, 0.65)
 		if jetpack_time > 0.0:
@@ -270,7 +363,7 @@ func _paint_front_at(ci: CanvasItem, base: Transform2D) -> void:
 	var hat_item := Catalog.find(Catalog.HATS, hat)
 	if hat_item.has("texture"):
 		var tex: Texture2D = hat_item.texture
-		var pivot := Vector2(tex.get_width() / 2.0, tex.get_height()) # Bottom middle.
+		var pivot: Vector2 = hat_item.get("pivot", Vector2(tex.get_width() / 2.0, tex.get_height())) # Default: bottom middle.
 		var at := Vector2(0, HEAD_TOP[_current_pose()] + HAT_SINK)
 		_draw_piece(ci, base, tex, pivot, at, 0.0, SPRITE_SCALE * hat_item.scale)
 	if has_bubble:

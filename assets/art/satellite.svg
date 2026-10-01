@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="352" height="84" viewBox="-176 -44 352 84">
+  <!-- User-space (0,0) is the centre of the gold body. Landing top edge (body and panels) is y = -28. -->
+  <defs>
+    <clipPath id="body"><rect x="-40" y="-28" width="80" height="56" rx="5"/></clipPath>
+    <clipPath id="panel"><rect x="60" y="-28" width="110" height="44" rx="4"/></clipPath>
+    <clipPath id="dish"><path d="M-14,-37 Q0,-23 14,-37 Z"/></clipPath>
+    <clipPath id="bell"><path d="M-10,26 L10,26 L15,37 L-15,37 Z"/></clipPath>
+  </defs>
+  <!-- Struts with hinge blocks -->
+  <rect x="34" y="-9" width="28" height="6" fill="#8e9aa8"/>
+  <rect x="34" y="-5" width="28" height="2" fill="#6f7b89"/>
+  <rect x="52" y="-13" width="8" height="14" rx="2" fill="#7b8796"/>
+  <rect x="-62" y="-9" width="28" height="6" fill="#8e9aa8"/>
+  <rect x="-62" y="-5" width="28" height="2" fill="#6f7b89"/>
+  <rect x="-60" y="-13" width="8" height="14" rx="2" fill="#7b8796"/>
+  <!-- Right solar panel -->
+  <g>
+    <rect x="60" y="-28" width="110" height="44" rx="4" fill="#2a5aa8"/>
+    <g clip-path="url(#panel)">
+      <rect x="60" y="-28" width="110" height="3" fill="#4f7fd1"/>
+      <g stroke="#4f7fd1" stroke-width="1.5" fill="none">
+        <rect x="64.5" y="-22.5" width="101" height="34" rx="1"/>
+        <path d="M84.7,-22.5 V11.5 M104.9,-22.5 V11.5 M125.1,-22.5 V11.5 M145.3,-22.5 V11.5"/>
+        <path d="M64.5,-11.2 H165.5 M64.5,0.2 H165.5"/>
+      </g>
+      <path d="M128,-25 L140,-25 L128,-1 L116,-1 Z" fill="#fff" opacity="0.22"/>
+      <path d="M144,-25 L149,-25 L137,-1 L132,-1 Z" fill="#fff" opacity="0.16"/>
+      <rect x="56" y="10" width="118" height="8" fill="#000" opacity="0.15"/>
+    </g>
+  </g>
+  <!-- Left solar panel (mirror of the right) -->
+  <g transform="scale(-1,1)">
+    <rect x="60" y="-28" width="110" height="44" rx="4" fill="#2a5aa8"/>
+    <g clip-path="url(#panel)">
+      <rect x="60" y="-28" width="110" height="3" fill="#4f7fd1"/>
+      <g stroke="#4f7fd1" stroke-width="1.5" fill="none">
+        <rect x="64.5" y="-22.5" width="101" height="34" rx="1"/>
+        <path d="M84.7,-22.5 V11.5 M104.9,-22.5 V11.5 M125.1,-22.5 V11.5 M145.3,-22.5 V11.5"/>
+        <path d="M64.5,-11.2 H165.5 M64.5,0.2 H165.5"/>
+      </g>
+      <path d="M128,-25 L140,-25 L128,-1 L116,-1 Z" fill="#fff" opacity="0.22"/>
+      <path d="M144,-25 L149,-25 L137,-1 L132,-1 Z" fill="#fff" opacity="0.16"/>
+      <rect x="56" y="10" width="118" height="8" fill="#000" opacity="0.15"/>
+    </g>
+  </g>
+  <!-- Engine bell under the body -->
+  <path d="M-10,26 L10,26 L15,37 L-15,37 Z" fill="#8e9aa8"/>
+  <g clip-path="url(#bell)">
+    <rect x="-16" y="33" width="32" height="5" fill="#000" opacity="0.15"/>
+  </g>
+  <!-- Gold foil body -->
+  <rect x="-40" y="-28" width="80" height="56" rx="5" fill="#e0a21b"/>
+  <g clip-path="url(#body)">
+    <path d="M-40,0 L-17,10 L-27,28 L-40,28 Z" fill="#b8801a"/>
+    <path d="M14,-24 L40,-24 L40,0 L27,-9 Z" fill="#b8801a"/>
+    <path d="M10,15 L28,19 L40,28 L5,28 Z" fill="#b8801a" opacity="0.7"/>
+    <path d="M-35,-20 L-9,-20 L-24,-7 Z" fill="#f7c331"/>
+    <path d="M24,0 L37,8 L31,13 Z" fill="#f7c331"/>
+    <path d="M-11,15 L-3,20 L-15,24 Z" fill="#f7c331"/>
+    <rect x="-44" y="-28" width="88" height="5" fill="#f7c331"/>
+    <rect x="-36" y="-19" width="4" height="30" rx="2" fill="#fff" opacity="0.22"/>
+    <rect x="-44" y="19" width="88" height="10" fill="#000" opacity="0.14"/>
+  </g>
+  <!-- Camera lens -->
+  <circle cx="0" cy="4" r="10" fill="#8e9aa8"/>
+  <circle cx="0" cy="4" r="7" fill="#2d2f3a"/>
+  <circle cx="2.5" cy="1.5" r="2.5" fill="#fff"/>
+  <!-- Dish antenna on top (stays within 12 units above y = -28) -->
+  <rect x="-2" y="-32" width="4" height="5" fill="#8e9aa8"/>
+  <path d="M-14,-37 Q0,-23 14,-37 Z" fill="#f4f4f0"/>
+  <g clip-path="url(#dish)">
+    <rect x="-16" y="-33" width="32" height="6" fill="#000" opacity="0.12"/>
+  </g>
+  <path d="M-10,-36 Q-5,-32 -1,-31 L-1,-36 Z" fill="#fff" opacity="0.6"/>
+  <path d="M0,-35 V-38" stroke="#8e9aa8" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="-38.3" r="1.7" fill="#e74c3c"/>
+</svg>

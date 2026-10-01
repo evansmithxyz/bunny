@@ -11,6 +11,7 @@ const Hud := preload("res://scripts/hud.gd")
 const Pickup := preload("res://scripts/pickup.gd")
 const Catalog := preload("res://scripts/catalog.gd")
 const Profile := preload("res://scripts/profile.gd")
+const BestMarker := preload("res://scripts/best_marker.gd")
 
 enum State { MENU, PLAYING, PAUSED, GAME_OVER }
 
@@ -59,10 +60,30 @@ const CARROT_POINTS := {"carrot": 10, "gold_carrot": 50}
 const FIRST_POWERUP_Y := -1500.0
 const POWERUP_GAP_MIN := 1800.0
 const POWERUP_GAP_MAX := 3000.0
-const POWERUP_WEIGHTS := {"jetpack": 1.0, "wings": 1.2, "bubble": 1.0}
-const POWERUP_NAMES := {"jetpack": "JETPACK!", "wings": "WINGS!", "bubble": "BUBBLE!"}
+const POWERUP_WEIGHTS := {"jetpack": 1.0, "wings": 1.2, "bubble": 1.0, "spring": 1.0, "slowmo": 0.8}
+const POWERUP_NAMES := {"jetpack": "JETPACK!", "wings": "WINGS!", "bubble": "BUBBLE!",
+	"spring": "SPRING SHOES!", "slowmo": "SLOW MOTION!"}
 const BUBBLE_RESCUE_BOUNCE := 1.7 # Launch strength when the bubble saves you.
 const MAGNET_SPEED := 900.0 # How fast the carrot magnet pulls carrots in.
+const SPRING_BOUNCES := 3 # Spring shoes: this many super bounces...
+const SPRING_BOUNCE := 1.6 # ...this much stronger.
+const SLOWMO_TIME := 5.0 # Real-world seconds.
+const SLOWMO_SCALE := 0.5 # Game speed during slow motion.
+
+# Higher up (altitude = pixels climbed): owls at night, then space, where birds
+# give way to UFOs and satellites.
+const NIGHT_START := 15000.0
+const SPACE_START := 24000.0
+const SPACE_FULL := 30000.0 # Sky fully space-black by here.
+const SPACE_SKY := Color(0.02, 0.01, 0.06)
+const EAGLE_START := 0.3 # Difficulty.
+# Swallows sometimes come as a V-shaped flock you can hop along. Offsets are
+# from the leader, with x pointing backward along the flight direction.
+const FLOCK_START := 0.15 # Difficulty.
+const FLOCK_CHANCE := 0.08
+const FLOCK_OFFSETS := [Vector2(0, 0), Vector2(-56, -26), Vector2(-56, 26), Vector2(-112, -52), Vector2(-112, 52)]
+const FLOCK_EXTRA_GAP := 52.0 # Leave room above the flock's top bird.
+const BEST_MARKER_MIN := 400.0 # Show the best-height line once the record is this high.
 
 var screen_size: Vector2
 var bunny: Bunny
@@ -88,6 +109,12 @@ var music_muted := false
 var vibration := true
 var tilt_right := Vector3.RIGHT # Steering center from the tilt screen (default: upright).
 var tilt_sensitivity := 1.0
+var control_mode := "tilt" # "tilt" or "touch".
+var best_height := 0.0 # Highest climb ever (pixels), for the marker in the sky.
+var best_marker: BestMarker
+var passed_best := false
+var reached_space := false
+var slowmo_left := 0.0 # Real seconds of slow motion left.
 var profile: Profile # Carrots and shop progress.
 var state := State.MENU
 var hud: Hud
@@ -99,9 +126,12 @@ static var skip_menu := false
 
 
 func _ready() -> void:
+	Engine.time_scale = 1.0 # In case a restart happened during slow motion.
 	screen_size = get_viewport_rect().size
 	save.load(SAVE_PATH) # Missing on first launch; defaults below cover that.
 	best_score = save.get_value("scores", "best", 0)
+	best_height = save.get_value("scores", "best_height", 0.0)
+	control_mode = save.get_value("settings", "control_mode", "tilt")
 	profile = Profile.new(save, SAVE_PATH)
 	muted = save.get_value("settings", "muted", false)
 	music_muted = save.get_value("settings", "music_muted", false)
@@ -135,6 +165,11 @@ func _ready() -> void:
 	add_child(scenery)
 	scenery.setup(screen_size, camera.position.y)
 	_place_ground_decor()
+	if best_height >= BEST_MARKER_MIN:
+		best_marker = BestMarker.new()
+		best_marker.screen_width = screen_size.x
+		best_marker.position = Vector2(0, -best_height)
+		add_child(best_marker) # Before the birds, so it's drawn behind them.
 
 	bunny = Bunny.new()
 	bunny.screen_width = screen_size.x
@@ -165,6 +200,7 @@ func _ready() -> void:
 	hud.tilt_screen.closed.connect(_close_tilt)
 	hud.tilt_screen.center_set.connect(_on_tilt_center_set)
 	hud.tilt_screen.sensitivity_changed.connect(_on_tilt_sensitivity_changed)
+	hud.tilt_screen.mode_changed.connect(_on_control_mode_changed)
 	_update_toggles()
 	_apply_profile()
 	_apply_tilt()
@@ -184,6 +220,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	camera.offset = Vector2(randf_range(-shake, shake), randf_range(-shake, shake))
 	shake = move_toward(shake, 0.0, 40.0 * delta)
+	if slowmo_left > 0.0:
+		slowmo_left -= delta / Engine.time_scale # Counts real time, not slowed time.
+		if slowmo_left <= 0.0:
+			_end_slowmo(true)
 
 
 func _physics_process(delta: float) -> void:
@@ -205,11 +245,18 @@ func _physics_process(delta: float) -> void:
 	_update_camera()
 	_spawn_birds()
 	_remove_offscreen_birds()
-	scenery.update(delta, camera.position.y, _difficulty())
+	scenery.update(delta, camera.position.y, _difficulty(), max_height)
 
 	max_height = maxf(max_height, -bunny.position.y)
 	hud.set_score(_score())
-	hud.set_powerups(bunny.jetpack_time / bunny.jetpack_duration, bunny.wings_time / bunny.wings_duration, bunny.has_bubble)
+	hud.set_powerups({
+		"jetpack": bunny.jetpack_time / bunny.jetpack_duration,
+		"wings": bunny.wings_time / bunny.wings_duration,
+		"bubble": 1.0 if bunny.has_bubble else 0.0,
+		"spring": float(bunny.spring_bounces),
+		"slowmo": slowmo_left / SLOWMO_TIME,
+	})
+	_check_milestones()
 	if bunny.jetpack_time <= 0.0:
 		sfx.stop_loop()
 	_update_sky()
@@ -242,6 +289,8 @@ func _check_landing(prev_feet: float) -> void:
 		return # On the menu the bunny only hops on the ground.
 
 	for bird in birds:
+		if not bird.is_solid():
+			continue # A faded-out owl: fall straight through.
 		var dx := Bunny.wrapped_dx(bunny.position.x, bird.position.x, screen_size.x)
 		var close_enough: bool = absf(dx) <= bird.half_width() + Bunny.HALF_WIDTH * 0.5
 		# Use the bird's previous top too, so birds moving up/down can't slip past the feet.
@@ -252,7 +301,12 @@ func _check_landing(prev_feet: float) -> void:
 
 func _land_on_bird(bird: Bird) -> void:
 	bunny.position.y = bird.top_y() - Bunny.FEET
-	bunny.bounce(bird.bounce_multiplier)
+	var multiplier: float = bird.bounce_multiplier
+	var sprung := bunny.spring_bounces > 0
+	if sprung:
+		multiplier *= SPRING_BOUNCE
+		bunny.spring_bounces -= 1
+	bunny.bounce(multiplier)
 	bird.hit()
 	carrot_streak = 0
 	effects.feathers(Vector2(bunny.position.x, bird.top_y()), bird.feather_color)
@@ -273,7 +327,11 @@ func _land_on_bird(bird: Bird) -> void:
 
 	# Boing rises in pitch as the combo grows.
 	sfx.play("boing", 1.0 + 0.04 * mini(combo, 15))
-	sfx.play("chirp", randf_range(0.9, 1.15))
+	if not bird.kind in ["ufo", "satellite"]:
+		sfx.play("chirp", randf_range(0.9, 1.15))
+	if sprung:
+		sfx.play("spring")
+		shake = maxf(shake, 6.0)
 
 	match bird.kind:
 		"hummingbird":
@@ -286,6 +344,20 @@ func _land_on_bird(bird: Bird) -> void:
 			shake = 6.0
 			bunny.knock(bird.direction * GOOSE_KNOCK_SPEED, 0.35)
 			_buzz(50, 0.9)
+		"eagle":
+			sfx.play("screech")
+			shake = 8.0
+			effects.popup(bunny.position + Vector2(0, -120), "WHOOSH!", Color(1.0, 0.85, 0.5), 44)
+			_buzz(40, 0.8)
+		"owl":
+			sfx.play("hoot")
+			_buzz(15, 0.35)
+		"ufo":
+			sfx.play("warble")
+			_buzz(20, 0.4)
+		"satellite":
+			sfx.play("beep")
+			_buzz(15, 0.35)
 		_:
 			_buzz(15, 0.35)
 
@@ -301,15 +373,35 @@ func _update_camera() -> void:
 func _spawn_birds() -> void:
 	var top_of_view := camera.position.y - screen_size.y / 2.0
 	while next_bird_y > top_of_view - 200.0:
-		_spawn_bird(next_bird_y)
 		var d := _difficulty()
+		if d >= FLOCK_START and -next_bird_y < SPACE_START and randf() < FLOCK_CHANCE:
+			_spawn_flock(next_bird_y, d)
+			next_bird_y -= FLOCK_EXTRA_GAP
+		else:
+			_spawn_bird(next_bird_y)
 		next_bird_y -= randf_range(lerpf(130.0, 200.0, d), lerpf(190.0, 280.0, d))
 
 
-func _spawn_bird(y: float) -> void:
+## Five swallows in a V, flying together: hop along them like stepping stones.
+func _spawn_flock(y: float, d: float) -> void:
+	var leader := _spawn_bird(y, "swallow")
+	for i in range(1, FLOCK_OFFSETS.size()):
+		var offset: Vector2 = FLOCK_OFFSETS[i]
+		var bird := Bird.new()
+		bird.setup("swallow", d, screen_size.x)
+		bird.direction = leader.direction
+		bird.speed = leader.speed
+		bird.position = Vector2(fposmod(leader.position.x + offset.x * leader.direction, screen_size.x), y + offset.y)
+		add_child(bird)
+		birds.append(bird)
+
+
+## Spawns one bird (of `kind`, or a random kind for its height) and maybe some
+## treats above it. Returns the bird.
+func _spawn_bird(y: float, kind: String = "") -> Bird:
 	var d := _difficulty()
 	var bird := Bird.new()
-	bird.setup(_pick_bird_kind(d), d, screen_size.x)
+	bird.setup(kind if kind != "" else _pick_bird_kind(d, -y), d, screen_size.x)
 	var below: Bird = birds.back() if not birds.is_empty() else null
 	if below:
 		# Flying the same way as the bird below keeps them from drifting apart.
@@ -326,11 +418,12 @@ func _spawn_bird(y: float) -> void:
 	# Treats above this bird: a carrot trail, and sometimes a power-up.
 	if y < -300.0 and randf() < CARROT_TRAIL_CHANCE:
 		for i in randi_range(3, 5):
-			var kind := "gold_carrot" if randf() < GOLD_CARROT_CHANCE else "carrot"
-			_spawn_pickup(kind, Vector2(bird.position.x, y - 70.0 - i * CARROT_TRAIL_SPACING))
+			var carrot := "gold_carrot" if randf() < GOLD_CARROT_CHANCE else "carrot"
+			_spawn_pickup(carrot, Vector2(bird.position.x, y - 70.0 - i * CARROT_TRAIL_SPACING))
 	if y < next_powerup_y:
 		next_powerup_y -= randf_range(POWERUP_GAP_MIN, POWERUP_GAP_MAX)
 		_spawn_pickup(_pick_weighted(POWERUP_WEIGHTS), Vector2(_reachable_x(bird.position.x, d), y - 100.0))
+	return bird
 
 
 func _spawn_pickup(kind: String, at: Vector2) -> void:
@@ -382,6 +475,40 @@ func _collect(pickup: Pickup) -> void:
 			bunny.wings_time = bunny.wings_duration
 		"bubble":
 			bunny.has_bubble = true
+		"spring":
+			bunny.spring_bounces = SPRING_BOUNCES
+		"slowmo":
+			_start_slowmo()
+
+
+func _start_slowmo() -> void:
+	slowmo_left = SLOWMO_TIME
+	Engine.time_scale = SLOWMO_SCALE
+	hud.set_slowmo(true)
+	sfx.play("slow_down")
+
+
+func _end_slowmo(play_sound: bool) -> void:
+	slowmo_left = 0.0
+	Engine.time_scale = 1.0
+	hud.set_slowmo(false)
+	if play_sound:
+		sfx.play("speed_up")
+
+
+## Passing your best height, and reaching space: once per run each.
+func _check_milestones() -> void:
+	if best_marker and not passed_best and max_height > best_height:
+		passed_best = true
+		best_marker.celebrate()
+		effects.popup(bunny.position + Vector2(0, -120), "New best height!", Color(1.0, 0.85, 0.3), 44)
+		sfx.play("best")
+		_buzz(40, 0.7)
+	if not reached_space and max_height > SPACE_START:
+		reached_space = true
+		effects.popup(bunny.position + Vector2(0, -140), "SPACE!", Color(0.75, 0.85, 1.0), 56)
+		sfx.play("space")
+		shake = 6.0
 
 
 ## The bubble pops and launches the bunny back up from the bottom of the screen.
@@ -398,13 +525,18 @@ func _bubble_rescue(bottom: float) -> void:
 	effects.popup(bunny.position + Vector2(0, -110), "SAVED!", Color(0.6, 0.9, 1.0), 48)
 
 
-func _pick_bird_kind(d: float) -> String:
+## A random bird kind for difficulty `d` at `altitude` (pixels climbed).
+func _pick_bird_kind(d: float, altitude: float) -> String:
+	if altitude >= SPACE_START:
+		return _pick_weighted({"ufo": 1.0, "satellite": 0.6})
 	var weights := {
 		"sparrow": 1.0,
 		"pigeon": lerpf(0.6, 0.15, d),
 		"hummingbird": 0.2,
 		"crow": 0.0 if d < CROW_START else lerpf(0.15, 0.45, d),
 		"goose": 0.0 if d < GOOSE_START else lerpf(0.15, 0.3, d),
+		"eagle": 0.0 if d < EAGLE_START else lerpf(0.06, 0.14, d),
+		"owl": 0.4 if altitude >= NIGHT_START else 0.0,
 	}
 	return _pick_weighted(weights)
 
@@ -446,12 +578,19 @@ func _score() -> int:
 
 
 func _update_sky() -> void:
-	RenderingServer.set_default_clear_color(sky.sample(_difficulty()))
+	var color := sky.sample(_difficulty())
+	if max_height > MAX_DIFFICULTY_HEIGHT: # Above night: on into space.
+		color = color.lerp(SPACE_SKY, smoothstep(MAX_DIFFICULTY_HEIGHT, SPACE_FULL, max_height))
+	RenderingServer.set_default_clear_color(color)
 
 
 func _end_game() -> void:
 	state = State.GAME_OVER
+	_end_slowmo(false)
 	sfx.stop_loop()
+	if max_height > best_height:
+		best_height = max_height
+		_save_setting("scores", "best_height", best_height)
 	profile.carrots += carrots_this_run
 	bunny.hurt = true
 	bunny.redraw()
@@ -474,7 +613,9 @@ func _start_game() -> void:
 	hud.show_playing()
 	hud.set_score(_score())
 	hud.set_carrots(0)
-	hud.show_hint("Tilt to steer!\nLand on birds to climb.", 3.0)
+	bunny.clear_touches()
+	var steer_hint := "Touch left or right to steer!" if control_mode == "touch" else "Tilt to steer!"
+	hud.show_hint(steer_hint + "\nLand on birds to climb.", 3.0)
 	if profile.level("bubble_start") > 0:
 		bunny.has_bubble = true # Shop upgrade.
 
@@ -494,6 +635,7 @@ func _pause() -> void:
 	sfx.play("click")
 	state = State.PAUSED
 	get_tree().paused = true
+	bunny.clear_touches() # The pause screen swallows the finger's release.
 	hud.show_paused()
 
 
@@ -503,6 +645,7 @@ func _resume() -> void:
 	sfx.play("click")
 	state = State.PLAYING
 	get_tree().paused = false
+	bunny.clear_touches()
 	hud.show_playing()
 
 
@@ -547,11 +690,11 @@ func _buzz(milliseconds: int, strength: float) -> void:
 		Input.vibrate_handheld(milliseconds, strength)
 
 
-# --- Tilt controls --------------------------------------------------------------
+# --- Controls (tilt / touch) ----------------------------------------------------
 
 func _open_tilt() -> void:
 	sfx.play("click")
-	hud.show_tilt(tilt_right, tilt_sensitivity)
+	hud.show_tilt(tilt_right, tilt_sensitivity, control_mode)
 
 
 ## Back to wherever the tilt screen was opened from: the pause screen or menu.
@@ -577,9 +720,18 @@ func _on_tilt_sensitivity_changed(value: float) -> void:
 	_apply_tilt()
 
 
+func _on_control_mode_changed(mode: String) -> void:
+	control_mode = mode
+	_save_setting("settings", "control_mode", mode)
+	_apply_tilt()
+	sfx.play("click")
+
+
 func _apply_tilt() -> void:
 	bunny.tilt_right = tilt_right
 	bunny.tilt_sensitivity = tilt_sensitivity
+	bunny.control_mode = control_mode
+	hud.set_control_mode(control_mode)
 
 
 # --- Shop ---------------------------------------------------------------------
@@ -605,10 +757,11 @@ func _on_equipped() -> void:
 	_apply_profile()
 
 
-## Puts the shop choices on the bunny: color, hat, and upgraded power-ups.
+## Puts the shop choices on the bunny: color, hat, trail, and upgraded power-ups.
 func _apply_profile() -> void:
 	bunny.color = profile.color
 	bunny.hat = profile.hat
+	bunny.trail = profile.trail
 	bunny.redraw()
 	bunny.jetpack_duration = Bunny.JETPACK_TIME + profile.level("jetpack") * Catalog.JETPACK_BONUS_PER_LEVEL
 	bunny.wings_duration = Bunny.WINGS_TIME + profile.level("wings") * Catalog.WINGS_BONUS_PER_LEVEL

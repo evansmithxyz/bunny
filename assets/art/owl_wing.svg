@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="130" height="64" viewBox="-118 -34 130 64">
+  <!-- Pivot (the shoulder) is at 0,0; the wing points backward (-x). Broad, rounded owl wing with soft feather tips. -->
+  <path d="M10,0 C4,-26 -50,-32 -104,-14 Q-116,-8 -104,-3 L-92,-2 Q-110,5 -98,10 L-84,8 Q-98,18 -84,19 L-70,14 Q-80,24 -64,22 L-52,16 Q-58,25 -42,22 L-32,15 C-14,16 4,10 10,0 Z" fill="#6b5444"/>
+  <path d="M8,-2 C0,-21 -50,-27 -94,-13 C-62,-16 -26,-11 6,5 Z" fill="#a08670"/>
+  <g fill="#a08670" opacity="0.6">
+    <ellipse cx="-86" cy="0" rx="5" ry="2.5"/>
+    <ellipse cx="-70" cy="5" rx="5" ry="2.5"/>
+    <ellipse cx="-54" cy="8" rx="5" ry="2.5"/>
+  </g>
+</svg>

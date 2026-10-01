@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="71" height="70" viewBox="0 0 71 70">
+  <defs>
+    <!-- Rounded square rotated 45 degrees, centered at 35.5,35 like the Kenney power-up icons -->
+    <clipPath id="tile"><rect x="8.3" y="7.8" width="54.4" height="54.4" rx="8" transform="rotate(45 35.5 35)"/></clipPath>
+  </defs>
+  <!-- Lighter tile; the base blue sits on top shifted down 4px, leaving a light rim on the upper edges -->
+  <rect x="8.3" y="7.8" width="54.4" height="54.4" rx="8" transform="rotate(45 35.5 35)" fill="#58b8f0"/>
+  <g clip-path="url(#tile)">
+    <rect x="8.3" y="11.8" width="54.4" height="54.4" rx="8" transform="rotate(45 35.5 39)" fill="#399dd7"/>
+  </g>
+  <!-- Spring glyph: zig-zag coil with rounded wire turns between two flat plates -->
+  <path d="M26.5,21.5 L40.15,26.23 Q46,28.25 39.7,30.27 L31.3,32.98 Q25,35 31.3,37.02 L39.7,39.73 Q46,41.75 40.15,43.77 L26.5,48.5" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="23.5" y="19" width="24" height="4" rx="2" fill="#fff"/>
+  <rect x="23.5" y="47" width="24" height="4" rx="2" fill="#fff"/>
+</svg>

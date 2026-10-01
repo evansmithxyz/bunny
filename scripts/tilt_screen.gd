@@ -1,16 +1,20 @@
 extends Control
-## Tilt controls: a live test track, "Set center" so any holding angle works
-## (lying down, leaning back...), and a sensitivity slider. Reports changes
-## to main.gd through signals; main.gd saves them.
+## Controls screen: choose Tilt or Touch steering. For tilt there's a live test
+## track, "Set center" so any holding angle works (lying down, leaning
+## back...), and a sensitivity slider. Reports changes to main.gd through
+## signals; main.gd saves them.
 
 signal closed
 signal center_set(right: Vector3) # Vector3.RIGHT means the default (upright).
 signal sensitivity_changed(value: float)
+signal mode_changed(mode: String) # "tilt" or "touch"
 
 const UI := preload("res://scripts/ui.gd")
 const Bunny := preload("res://scripts/bunny.gd")
 const BUNNY_ICON := preload("res://assets/kenney/bunny1_stand.png")
 const KNOB := preload("res://assets/ui/slider_knob.svg")
+const ARROW := preload("res://assets/ui/arrow.svg")
+const MODES := {"tilt": "Tilt", "touch": "Touch"}
 
 const SENSITIVITY_MIN := 0.5
 const SENSITIVITY_MAX := 1.8
@@ -26,6 +30,10 @@ var _marker: TextureRect
 var _status: Label
 var _slider: HSlider
 var _status_id := 0
+var _mode := "tilt"
+var _mode_buttons := {} # mode -> Button
+var _tilt_section: VBoxContainer
+var _touch_section: VBoxContainer
 
 
 func _ready() -> void:
@@ -39,18 +47,32 @@ func _ready() -> void:
 	add_child(center)
 	var card := UI.card(center, 40, 20)
 
-	card.add_child(UI.label("Tilt controls", 56, UI.INK))
+	card.add_child(UI.label("Controls", 56, UI.INK))
+	var modes := HBoxContainer.new()
+	modes.add_theme_constant_override("separation", 16)
+	for mode in MODES:
+		var button := UI.button(MODES[mode], null, UI.BLUE, Vector2(0, 90), 38)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(_on_mode_pressed.bind(mode))
+		modes.add_child(button)
+		_mode_buttons[mode] = button
+	card.add_child(modes)
+
+	# Tilt: calibration and sensitivity.
+	_tilt_section = VBoxContainer.new()
+	_tilt_section.add_theme_constant_override("separation", 20)
+	card.add_child(_tilt_section)
 	var hint := UI.label("Hold your phone the way you like to play, then tap Set center.", 28, Color("5d7185"))
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size.x = TRACK_WIDTH
-	card.add_child(hint)
+	_tilt_section.add_child(hint)
 
-	card.add_child(_build_track())
+	_tilt_section.add_child(_build_track())
 	_status = UI.label("", 28, UI.ORANGE[1])
 	# Wraps within the card and keeps room for two lines so the card doesn't resize.
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.custom_minimum_size = Vector2(TRACK_WIDTH, 76)
-	card.add_child(_status)
+	_tilt_section.add_child(_status)
 
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 16)
@@ -61,28 +83,70 @@ func _ready() -> void:
 	var reset := UI.button("Reset", null, UI.BLUE, Vector2(170, 96), 38)
 	reset.pressed.connect(_on_reset)
 	buttons.add_child(reset)
-	card.add_child(buttons)
+	_tilt_section.add_child(buttons)
+
+	_tilt_section.add_child(UI.spacer(4))
+	_tilt_section.add_child(UI.label("Sensitivity", 32, UI.INK))
+	_tilt_section.add_child(_build_slider())
+
+	# Touch: just an explanation, with the same arrows shown during play.
+	_touch_section = VBoxContainer.new()
+	_touch_section.add_theme_constant_override("separation", 20)
+	card.add_child(_touch_section)
+	var arrows := HBoxContainer.new()
+	arrows.alignment = BoxContainer.ALIGNMENT_CENTER
+	arrows.add_theme_constant_override("separation", 120)
+	for side in [-1.0, 1.0]:
+		var arrow := UI.icon(ARROW, 96)
+		arrow.flip_h = side < 0.0
+		arrow.modulate = UI.BLUE[0]
+		arrows.add_child(arrow)
+	_touch_section.add_child(arrows)
+	var touch_hint := UI.label("Hold the left or right side of the screen to steer.", 30, Color("5d7185"))
+	touch_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	touch_hint.custom_minimum_size.x = TRACK_WIDTH
+	_touch_section.add_child(touch_hint)
+
+	# Same height in both modes, so the Tilt/Touch buttons don't jump when switching.
+	_touch_section.custom_minimum_size.y = _tilt_section.get_combined_minimum_size().y
+	_touch_section.alignment = BoxContainer.ALIGNMENT_CENTER
 
 	card.add_child(UI.spacer(4))
-	card.add_child(UI.label("Sensitivity", 32, UI.INK))
-	card.add_child(_build_slider())
-	card.add_child(UI.spacer(4))
-
 	var done := UI.button("Done", null, UI.BLUE, Vector2(0, 96))
 	done.pressed.connect(closed.emit)
 	card.add_child(done)
 
 
 ## Shows the screen with the player's current settings.
-func open(right: Vector3, sensitivity: float) -> void:
+func open(right: Vector3, sensitivity: float, mode: String) -> void:
 	_right = right
 	_sensitivity = sensitivity
 	_slider.set_value_no_signal(sensitivity)
-	_say("" if _has_sensor() else "No tilt sensor found. Use the arrow keys.")
+	_show_mode(mode)
+	_say("" if _has_sensor() else "No tilt sensor found. Try Touch, or the arrow keys.")
+
+
+func _on_mode_pressed(mode: String) -> void:
+	if mode == _mode:
+		return
+	_show_mode(mode)
+	mode_changed.emit(mode)
+
+
+func _show_mode(mode: String) -> void:
+	if _tilt_section.visible and _tilt_section.size.y > 0.0:
+		# Use the tilt section's real laid-out height (the estimate made before
+		# layout can be a few pixels off), so the card doesn't change size.
+		_touch_section.custom_minimum_size.y = _tilt_section.size.y
+	_mode = mode
+	for m in _mode_buttons:
+		UI.style_button(_mode_buttons[m], UI.ORANGE if m == mode else UI.BLUE)
+	_tilt_section.visible = mode == "tilt"
+	_touch_section.visible = mode == "touch"
 
 
 func _process(_delta: float) -> void:
-	if not visible:
+	if not visible or _mode != "tilt":
 		return
 	# Slide the little bunny along the track exactly as the game would steer.
 	var steer := Bunny.steer(Bunny.tilt_amount(read_accel.call(), _right), _sensitivity)
@@ -92,7 +156,7 @@ func _process(_delta: float) -> void:
 
 func _on_set_center() -> void:
 	if not _has_sensor():
-		_say("No tilt sensor found. Use the arrow keys.")
+		_say("No tilt sensor found. Try Touch, or the arrow keys.")
 		return
 	_right = Bunny.calibrate_right(read_accel.call())
 	center_set.emit(_right)

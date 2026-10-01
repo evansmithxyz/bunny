@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="86" viewBox="0 0 100 86">
+  <!-- Anchor: bottom-center (50,86) sits on top of the bunny's head. -->
+  <defs>
+    <clipPath id="dome"><path d="M13,68 C13,38 30,20 50,20 C70,20 87,38 87,68 Z"/></clipPath>
+    <clipPath id="cuff"><rect x="8" y="62" width="84" height="24" rx="8"/></clipPath>
+  </defs>
+  <!-- Knit dome -->
+  <path d="M13,68 C13,38 30,20 50,20 C70,20 87,38 87,68 Z" fill="#e74c3c"/>
+  <g clip-path="url(#dome)">
+    <!-- White stripes, curved slightly to wrap around the head -->
+    <path d="M0,36 Q50,42 100,36 L100,43 Q50,49 0,43 Z" fill="#f4f6fb"/>
+    <path d="M0,50 Q50,56 100,50 L100,57 Q50,63 0,57 Z" fill="#f4f6fb"/>
+    <!-- Soft highlight curving along the upper left -->
+    <path d="M19,55 C19,35 30,24 46,22 C35,28 27,38 25,55 Z" fill="#fff" opacity="0.22"/>
+    <!-- Shadow along the right side, under the pom-pom and at the bottom -->
+    <path d="M87,68 C87,38 70,20 50,20 C66,26 77,42 78,68 Z" fill="#000" opacity="0.09"/>
+    <ellipse cx="50" cy="22" rx="14" ry="5" fill="#000" opacity="0.12"/>
+    <rect x="0" y="60" width="100" height="11" fill="#000" opacity="0.12"/>
+  </g>
+  <!-- Folded ribbed cuff -->
+  <rect x="8" y="62" width="84" height="24" rx="8" fill="#c0392b"/>
+  <g clip-path="url(#cuff)">
+    <g stroke="#a5301f" stroke-width="2.4" stroke-linecap="round">
+      <path d="M15,65 L15,83"/>
+      <path d="M22,65 L22,83"/>
+      <path d="M29,65 L29,83"/>
+      <path d="M36,65 L36,83"/>
+      <path d="M43,65 L43,83"/>
+      <path d="M50,65 L50,83"/>
+      <path d="M57,65 L57,83"/>
+      <path d="M64,65 L64,83"/>
+      <path d="M71,65 L71,83"/>
+      <path d="M78,65 L78,83"/>
+      <path d="M85,65 L85,83"/>
+    </g>
+    <rect x="0" y="62" width="100" height="4" fill="#fff" opacity="0.14"/>
+    <rect x="0" y="79" width="100" height="8" fill="#000" opacity="0.14"/>
+  </g>
+  <!-- Fluffy pom-pom -->
+  <circle cx="50" cy="15" r="12" fill="#e8ecf2"/>
+  <circle cx="40" cy="17" r="7" fill="#e8ecf2"/>
+  <circle cx="60" cy="17" r="7" fill="#e8ecf2"/>
+  <circle cx="44" cy="8" r="7" fill="#e8ecf2"/>
+  <circle cx="57" cy="7" r="7" fill="#e8ecf2"/>
+  <circle cx="48" cy="12" r="9" fill="#fff"/>
+  <circle cx="41" cy="14" r="5" fill="#fff"/>
+  <circle cx="55" cy="10" r="6" fill="#fff"/>
+  <circle cx="45" cy="9" r="3" fill="#fff" opacity="0.9"/>
+</svg>
