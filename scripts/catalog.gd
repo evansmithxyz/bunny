@@ -11,17 +11,17 @@ const COLORS := [
 	{"id": "sky", "name": "Sky", "price": 150, "hsv": [0.49, 0.7, 1.2]},
 	{"id": "shadow", "name": "Shadow", "price": 200, "hsv": [0.0, 0.2, 0.55]},
 	{"id": "golden", "name": "Golden", "price": 400, "hsv": [0.06, 1.15, 1.5]},
-	{"id": "purple", "name": "Purple", "price": -1, "secret": true}, # Can't be bought.
+	{"id": "purple", "name": "Purple", "price": -1, "secret": true}, # Can't be bought; hidden until found.
 ]
 
-# "scale" sizes the hat art relative to the bunny art, small enough that the
-# ears still poke up around it.
+# "scale" sizes the hat art relative to the bunny art: as big as possible while
+# the ears still poke up around it (the narrow party hat can be bigger).
 const HATS := [
 	{"id": "none", "name": "No hat", "price": 0},
-	{"id": "party", "name": "Party hat", "price": 75, "scale": 0.6, "texture": preload("res://assets/art/hat_party.svg")},
-	{"id": "flower", "name": "Flower", "price": 120, "scale": 0.55, "texture": preload("res://assets/art/hat_flower.svg")},
-	{"id": "top", "name": "Top hat", "price": 200, "scale": 0.55, "texture": preload("res://assets/art/hat_top.svg")},
-	{"id": "crown", "name": "Crown", "price": 400, "scale": 0.55, "texture": preload("res://assets/art/hat_crown.svg")},
+	{"id": "party", "name": "Party hat", "price": 75, "scale": 0.85, "texture": preload("res://assets/art/hat_party.svg")},
+	{"id": "flower", "name": "Flower", "price": 120, "scale": 0.7, "texture": preload("res://assets/art/hat_flower.svg")},
+	{"id": "top", "name": "Top hat", "price": 200, "scale": 0.7, "texture": preload("res://assets/art/hat_top.svg")},
+	{"id": "crown", "name": "Crown", "price": 400, "scale": 0.7, "texture": preload("res://assets/art/hat_crown.svg")},
 ]
 
 # "prices" has one entry per level.

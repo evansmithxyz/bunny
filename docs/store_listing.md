@@ -39,8 +39,6 @@ Climb from a sunny morning through golden hour and sunset into the night sky.
 - No ads, no in-app purchases, no account needed
 - Plays offline
 
-There might even be a secret or two on the title screen...
-
 ## Category and tags
 
 - App or game: **Game**

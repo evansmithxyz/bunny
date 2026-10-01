@@ -11,6 +11,7 @@ signal sound_pressed
 signal music_pressed
 signal vibration_pressed
 signal shop_pressed
+signal tilt_pressed
 signal secret_found # Title tapped SECRET_TAPS times in a row.
 
 const ICON_PLAY := preload("res://assets/ui/play.svg")
@@ -33,6 +34,8 @@ const POWERUP_ICONS := {
 
 const UI := preload("res://scripts/ui.gd")
 const Shop := preload("res://scripts/shop.gd")
+const TiltScreen := preload("res://scripts/tilt_screen.gd")
+const ICON_TILT := preload("res://assets/ui/tilt.svg")
 const ORANGE := UI.ORANGE
 const BLUE := UI.BLUE
 const INK := UI.INK
@@ -42,11 +45,12 @@ const BUTTONS_LOCK_TIME := 0.6 # Game-over buttons ignore taps briefly.
 const SECRET_TAPS := 7
 const SECRET_TAP_GAP_MS := 1000
 
-enum Screen { MENU, PLAYING, PAUSED, GAME_OVER, SHOP }
+enum Screen { MENU, PLAYING, PAUSED, GAME_OVER, SHOP, TILT }
 
 var screen := Screen.MENU
-var purple := false # Which skin the secret would switch *away* from.
+
 var shop: Shop
+var tilt_screen: TiltScreen
 
 var _score_label: Label
 var _status: VBoxContainer # Carrot count and active power-ups, under the score.
@@ -80,6 +84,9 @@ func _ready() -> void:
 	shop = Shop.new()
 	shop.visible = false
 	add_child(shop)
+	tilt_screen = TiltScreen.new()
+	tilt_screen.visible = false
+	add_child(tilt_screen)
 
 
 # --- Switching screens ------------------------------------------------------
@@ -96,6 +103,12 @@ func show_shop(profile: RefCounted) -> void:
 	screen = Screen.SHOP
 	shop.open(profile)
 	_show_only(shop)
+
+
+func show_tilt(right: Vector3, sensitivity: float) -> void:
+	screen = Screen.TILT
+	tilt_screen.open(right, sensitivity)
+	_show_only(tilt_screen)
 
 
 func show_playing() -> void:
@@ -179,21 +192,17 @@ func _on_title_input(event: InputEvent) -> void:
 		_title_taps = 0
 	_last_tap_ms = now
 	_title_taps += 1
-	UI.bump(_title)
-
-	var left := SECRET_TAPS - _title_taps
-	if left == 0:
+	# No visible reaction until the last tap, so nothing gives the secret away.
+	if _title_taps == SECRET_TAPS:
 		_title_taps = 0
 		secret_found.emit()
-	elif left <= 3: # Like Android's "You are 3 steps away from being a developer."
-		show_toast("%d tap%s away from %s..." % [left, "" if left == 1 else "s", "brown" if purple else "purple"])
 
 
 func _show_only(overlay: Control) -> void:
 	_score_label.visible = screen == Screen.PLAYING or screen == Screen.PAUSED
 	_status.visible = _score_label.visible
 	_pause_button.visible = screen == Screen.PLAYING
-	for o in [_menu, _paused, _game_over, shop]:
+	for o in [_menu, _paused, _game_over, shop, tilt_screen]:
 		o.visible = o == overlay
 	if screen != Screen.PLAYING:
 		_hint_label.visible = false
@@ -209,6 +218,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			resume_pressed.emit()
 		elif screen == Screen.SHOP:
 			shop.closed.emit()
+		elif screen == Screen.TILT:
+			tilt_screen.closed.emit()
 	elif event.is_action_pressed("ui_accept"):
 		if screen == Screen.MENU:
 			play_pressed.emit()
@@ -346,7 +357,7 @@ func _build_game_over() -> void:
 	_game_over_buttons = [again, menu]
 
 
-## Three square buttons: sound, music, vibration.
+## Square buttons: sound, music, vibration toggles, then tilt controls.
 func _toggle_row() -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -360,6 +371,11 @@ func _toggle_row() -> HBoxContainer:
 		if not _toggles.has(toggle_name):
 			_toggles[toggle_name] = []
 		_toggles[toggle_name].append(button)
+	# Not an on/off toggle: opens the tilt controls screen.
+	var tilt := UI.button("", ICON_TILT, BLUE, Vector2(112, 100))
+	tilt.add_theme_constant_override("icon_max_width", 56)
+	tilt.pressed.connect(tilt_pressed.emit)
+	row.add_child(tilt)
 	return row
 
 

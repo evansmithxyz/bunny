@@ -86,6 +86,8 @@ var best_score := 0
 var muted := false # Sound effects.
 var music_muted := false
 var vibration := true
+var tilt_right := Vector3.RIGHT # Steering center from the tilt screen (default: upright).
+var tilt_sensitivity := 1.0
 var profile: Profile # Carrots and shop progress.
 var state := State.MENU
 var hud: Hud
@@ -104,6 +106,8 @@ func _ready() -> void:
 	muted = save.get_value("settings", "muted", false)
 	music_muted = save.get_value("settings", "music_muted", false)
 	vibration = save.get_value("settings", "vibration", true)
+	tilt_right = save.get_value("settings", "tilt_right", Vector3.RIGHT)
+	tilt_sensitivity = save.get_value("settings", "tilt_sensitivity", 1.0)
 	AudioServer.set_bus_mute(AudioServer.get_bus_index(&"SFX"), muted)
 	AudioServer.set_bus_mute(AudioServer.get_bus_index(&"Music"), music_muted)
 
@@ -157,8 +161,13 @@ func _ready() -> void:
 	hud.shop.purchased.connect(_on_purchased)
 	hud.shop.equipped.connect(_on_equipped)
 	hud.shop.denied.connect(sfx.play.bind("click", 0.6))
+	hud.tilt_pressed.connect(_open_tilt)
+	hud.tilt_screen.closed.connect(_close_tilt)
+	hud.tilt_screen.center_set.connect(_on_tilt_center_set)
+	hud.tilt_screen.sensitivity_changed.connect(_on_tilt_sensitivity_changed)
 	_update_toggles()
 	_apply_profile()
+	_apply_tilt()
 
 	_spawn_birds()
 	scenery.update(0.0, camera.position.y, 0.0)
@@ -538,6 +547,41 @@ func _buzz(milliseconds: int, strength: float) -> void:
 		Input.vibrate_handheld(milliseconds, strength)
 
 
+# --- Tilt controls --------------------------------------------------------------
+
+func _open_tilt() -> void:
+	sfx.play("click")
+	hud.show_tilt(tilt_right, tilt_sensitivity)
+
+
+## Back to wherever the tilt screen was opened from: the pause screen or menu.
+func _close_tilt() -> void:
+	sfx.play("click")
+	_save_setting("settings", "tilt_sensitivity", tilt_sensitivity) # Saved once, not on every slider move.
+	if state == State.PAUSED:
+		hud.show_paused()
+	else:
+		hud.show_menu(best_score, profile.carrots)
+
+
+func _on_tilt_center_set(right: Vector3) -> void:
+	tilt_right = right
+	_save_setting("settings", "tilt_right", right)
+	_apply_tilt()
+	sfx.play("combo")
+	_buzz(30, 0.5)
+
+
+func _on_tilt_sensitivity_changed(value: float) -> void:
+	tilt_sensitivity = value
+	_apply_tilt()
+
+
+func _apply_tilt() -> void:
+	bunny.tilt_right = tilt_right
+	bunny.tilt_sensitivity = tilt_sensitivity
+
+
 # --- Shop ---------------------------------------------------------------------
 
 func _open_shop() -> void:
@@ -568,7 +612,7 @@ func _apply_profile() -> void:
 	bunny.redraw()
 	bunny.jetpack_duration = Bunny.JETPACK_TIME + profile.level("jetpack") * Catalog.JETPACK_BONUS_PER_LEVEL
 	bunny.wings_duration = Bunny.WINGS_TIME + profile.level("wings") * Catalog.WINGS_BONUS_PER_LEVEL
-	hud.purple = profile.color == "purple"
+
 
 
 ## Easter egg: tapping the menu title 7 times swaps the brown and purple bunnies.
@@ -594,12 +638,17 @@ func _notification(what: int) -> void:
 				State.PLAYING:
 					_pause()
 				State.PAUSED:
-					_resume()
+					if hud.screen == hud.Screen.TILT:
+						_close_tilt()
+					else:
+						_resume()
 				State.GAME_OVER:
 					_go_to_menu()
 				State.MENU:
 					if hud.screen == hud.Screen.SHOP:
 						_close_shop()
+					elif hud.screen == hud.Screen.TILT:
+						_close_tilt()
 					else:
 						get_tree().quit()
 

@@ -16,10 +16,12 @@ const MAX_SIDE_SPEED := 800.0
 const HALF_WIDTH := 26.0
 const FEET := 48.0 # Distance from the bunny's center down to its feet.
 
-# Tilt tuning. If the bunny moves the wrong way when you tilt, set INVERT_TILT.
-const TILT_SENSITIVITY := 3.0
+# Tilt steering measures how far the phone leans away from "center". Center is
+# the phone held upright by default, or whatever angle the player saved with
+# "Set center" on the tilt screen. Readings are -1 to 1 (sine of the angle).
+const TILT_SENSITIVITY := 3.0 # Full speed at about 20 degrees, before the player's multiplier.
 const TILT_DEAD_ZONE := 0.03
-const INVERT_TILT := false
+const TILT_SIDEWAYS_SWITCH := 0.25 # See calibrate_right.
 
 # Kenney Jumper Pack sprites (CC0), drawn with their feet at FEET.
 const SPRITE_SCALE := 0.5
@@ -68,6 +70,8 @@ var velocity := Vector2.ZERO
 var screen_width := 720.0
 var hurt := false # Shows the hurt face (set on game over).
 var controls_enabled := true # Off on the menu, where the bunny just hops in place.
+var tilt_right := Vector3.RIGHT # Direction that counts as "tilt right" (see calibrate_right).
+var tilt_sensitivity := 1.0 # Player's multiplier from the tilt screen.
 var color := "brown": # A Catalog.COLORS id.
 	set(value):
 		color = value
@@ -156,13 +160,40 @@ func _read_horizontal_input() -> float:
 	if keys != 0.0:
 		return keys
 
-	var accel := Input.get_accelerometer() # Zero on PCs without a sensor.
-	var tilt := accel.x / 9.8
-	if INVERT_TILT:
-		tilt = -tilt
+	return steer(tilt_amount(Input.get_accelerometer(), tilt_right), tilt_sensitivity)
+
+
+## How far the phone leans right (+) or left (-) of center: -1 to 1.
+## `accel` is a raw accelerometer reading (zero on PCs without a sensor).
+static func tilt_amount(accel: Vector3, right: Vector3) -> float:
+	if accel.length() < 0.1:
+		return 0.0
+	return accel.normalized().dot(right)
+
+
+## Turns a tilt reading into steering: dead zone, sensitivity, -1 to 1.
+static func steer(tilt: float, sensitivity: float) -> float:
 	if absf(tilt) < TILT_DEAD_ZONE:
 		return 0.0
-	return clampf(tilt * TILT_SENSITIVITY, -1.0, 1.0)
+	return clampf(tilt * TILT_SENSITIVITY * sensitivity, -1.0, 1.0)
+
+
+## The "right" direction to steer by when the phone rests like `accel`: the
+## phone's own sideways axis, with the part along gravity removed, so that
+## resting position reads as zero and tilting either way reads the same amount.
+##
+## Lying on your side, the sideways axis points almost straight down and can't
+## be used, so the phone's up axis is used instead (signed to match). For the
+## "steering wheel" motion both give exactly the same direction, so the switch
+## is seamless. Returns Vector3.ZERO only when there's no sensor.
+static func calibrate_right(accel: Vector3) -> Vector3:
+	if accel.length() < 0.1:
+		return Vector3.ZERO
+	var down := accel.normalized()
+	var right := Vector3.RIGHT - down * Vector3.RIGHT.dot(down)
+	if right.length() < TILT_SIDEWAYS_SWITCH:
+		right = (Vector3.UP - down * Vector3.UP.dot(down)) * -signf(down.x)
+	return right.normalized()
 
 
 func _apply_color() -> void:

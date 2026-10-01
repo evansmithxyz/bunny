@@ -88,6 +88,8 @@ func _ready() -> void:
 	column.add_child(_scroll)
 
 	_message = UI.label("", 34, Color.WHITE, true)
+	# Wraps, so a long message can't push the whole shop wider than the screen.
+	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_message.custom_minimum_size.y = 48
 	column.add_child(_message)
 
@@ -136,9 +138,7 @@ func _on_item_pressed(id: String, kind: String) -> void:
 		return
 
 	var price := profile.price_of(id)
-	if price < 0: # The secret purple bunny.
-		_say("It's a secret... try tapping around the title screen")
-		denied.emit()
+	if price < 0: # A maxed-out upgrade: nothing more to buy.
 		return
 	if price > profile.carrots:
 		_say("Need %d more carrots" % (price - profile.carrots))
@@ -193,11 +193,12 @@ func _item_grid(items: Array, kind: String) -> GridContainer:
 	grid.add_theme_constant_override("h_separation", 12)
 	grid.add_theme_constant_override("v_separation", 12)
 	for item: Dictionary in items:
+		if item.get("secret", false) and not profile.owns(item.id):
+			continue # Secret items don't appear at all until they're found.
 		var box := UI.card(grid, 10, 6)
 		box.get_parent().size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var secret: bool = item.get("secret", false) and not profile.owns(item.id)
-		box.add_child(_thumbnail(item, kind, secret))
-		var name_label := UI.label("???" if secret else item.name, 24, UI.INK)
+		box.add_child(_thumbnail(item, kind))
+		var name_label := UI.label(item.name, 24, UI.INK)
 		name_label.clip_text = true
 		box.add_child(name_label)
 		box.add_child(_item_button(item.id, kind))
@@ -213,8 +214,6 @@ func _item_button(id: String, kind: String) -> Button:
 		button = UI.button("On", null, UI.GREEN, Vector2(0, 60), 28)
 	elif owned:
 		button = UI.button("Wear", null, UI.BLUE, Vector2(0, 60), 28)
-	elif price < 0:
-		button = UI.button("Secret", null, UI.GREY, Vector2(0, 60), 26)
 	elif _confirm_id == id:
 		button = UI.button("Buy?", null, UI.ORANGE, Vector2(0, 60), 28)
 	else:
@@ -294,15 +293,12 @@ func _tighten(button: Button) -> void:
 
 # --- Bunny pictures ---------------------------------------------------------
 
-func _thumbnail(item: Dictionary, kind: String, secret: bool) -> Control:
+func _thumbnail(item: Dictionary, kind: String) -> Control:
 	if kind == "hat":
 		var hat := UI.icon(item.get("texture"), 80) # "No hat" shows an empty space.
 		return hat
 	var body := UI.icon(_bunny_texture(item.id), 96)
 	body.material = Catalog.color_material(item.id)
-	if secret:
-		# A dark silhouette until the easter egg is found.
-		body.modulate = Color(0.1, 0.1, 0.15)
 	return body
 
 

@@ -106,13 +106,6 @@ static func style_button(b: Button, colors: Array) -> void:
 	b.add_theme_stylebox_override("disabled", _button_style([colors[0].darkened(0.2), colors[1].darkened(0.2)], 10, 0))
 
 
-## A quick "boing" scale bump, e.g. when something is tapped.
-static func bump(control: Control) -> void:
-	control.pivot_offset = control.size / 2.0
-	control.scale = Vector2(1.08, 1.08)
-	control.create_tween().tween_property(control, "scale", Vector2.ONE, 0.15)
-
-
 static func _button_style(colors: Array, edge: int, push: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = colors[0]

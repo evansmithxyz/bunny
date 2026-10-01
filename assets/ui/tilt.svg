@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- A tilted phone with curved arrows either side -->
+  <g transform="rotate(-18 32 32)">
+    <rect x="21" y="10" width="22" height="42" rx="5" fill="#fff"/>
+    <rect x="25" y="15" width="14" height="28" rx="2" fill="#3b9bd6"/>
+  </g>
+  <path d="M10,22 Q4,32 10,42" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M6,40 L10,44 L14,39" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M54,42 Q60,32 54,22" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M58,24 L54,20 L50,25" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
