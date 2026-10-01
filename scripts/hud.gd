@@ -8,14 +8,21 @@ signal pause_pressed
 signal resume_pressed
 signal menu_pressed
 signal sound_pressed
+signal music_pressed
+signal vibration_pressed
 signal secret_found # Title tapped SECRET_TAPS times in a row.
 
 const ICON_PLAY := preload("res://assets/ui/play.svg")
 const ICON_PAUSE := preload("res://assets/ui/pause.svg")
 const ICON_RETRY := preload("res://assets/ui/retry.svg")
 const ICON_HOME := preload("res://assets/ui/home.svg")
-const ICON_SOUND_ON := preload("res://assets/ui/sound_on.svg")
-const ICON_SOUND_OFF := preload("res://assets/ui/sound_off.svg")
+# Settings toggles: [icon when on, icon when off].
+const TOGGLE_ICONS := {
+	"sound": [preload("res://assets/ui/sound_on.svg"), preload("res://assets/ui/sound_off.svg")],
+	"music": [preload("res://assets/ui/music_on.svg"), preload("res://assets/ui/music_off.svg")],
+	"vibration": [preload("res://assets/ui/vibrate_on.svg"), preload("res://assets/ui/vibrate_off.svg")],
+}
+const GREY := [Color("8a9aa8"), Color("67757f")] # Toggle that's switched off.
 const ICON_CARROT := preload("res://assets/kenney/carrots.png")
 const POWERUP_ICONS := {
 	"jetpack": preload("res://assets/kenney/powerup_jetpack.png"),
@@ -52,7 +59,7 @@ var _menu_best: Label
 var _final_score: Label
 var _final_best: Label
 var _game_over_buttons: Array[Button] = []
-var _sound_buttons: Array[Button] = []
+var _toggles := {} # name -> list of buttons (one per screen that shows it)
 var _title: Label
 var _toast: Label
 var _toast_id := 0
@@ -122,10 +129,13 @@ func set_powerups(jetpack: float, wings: float, bubble: bool) -> void:
 			bar.value = left
 
 
-func set_muted(muted: bool) -> void:
-	for button in _sound_buttons:
-		button.icon = ICON_SOUND_OFF if muted else ICON_SOUND_ON
-		button.text = "Sound: Off" if muted else "Sound: On"
+## Updates the sound / music / vibration buttons to show which are on.
+func set_toggles(sound: bool, music: bool, vibration: bool) -> void:
+	var on := {"sound": sound, "music": music, "vibration": vibration}
+	for toggle_name in _toggles:
+		for button: Button in _toggles[toggle_name]:
+			button.icon = TOGGLE_ICONS[toggle_name][0 if on[toggle_name] else 1]
+			_style_button(button, BLUE if on[toggle_name] else GREY)
 
 
 ## Shows a message in the middle of the screen for a few seconds.
@@ -278,7 +288,7 @@ func _build_menu() -> void:
 	var play := _button("Play", ICON_PLAY, ORANGE, Vector2(380, 120), 56)
 	play.pressed.connect(play_pressed.emit)
 	box.add_child(play)
-	box.add_child(_sound_button())
+	box.add_child(_toggle_row())
 
 	var tip := _label("Tilt your phone to steer", 30, Color.WHITE, true)
 	box.add_child(_spacer(10))
@@ -294,7 +304,7 @@ func _build_paused() -> void:
 	var resume := _button("Resume", ICON_PLAY, ORANGE, Vector2(380, 110))
 	resume.pressed.connect(resume_pressed.emit)
 	card.add_child(resume)
-	card.add_child(_sound_button())
+	card.add_child(_toggle_row())
 	var menu := _button("Menu", ICON_HOME, BLUE, Vector2(380, 96))
 	menu.pressed.connect(menu_pressed.emit)
 	card.add_child(menu)
@@ -324,11 +334,21 @@ func _build_game_over() -> void:
 	_game_over_buttons = [again, menu]
 
 
-func _sound_button() -> Button:
-	var button := _button("Sound: On", ICON_SOUND_ON, BLUE, Vector2(380, 96))
-	button.pressed.connect(sound_pressed.emit)
-	_sound_buttons.append(button)
-	return button
+## Three square buttons: sound, music, vibration.
+func _toggle_row() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 22)
+	var signals := {"sound": sound_pressed, "music": music_pressed, "vibration": vibration_pressed}
+	for toggle_name in TOGGLE_ICONS:
+		var button := _button("", TOGGLE_ICONS[toggle_name][0], BLUE, Vector2(112, 100))
+		button.add_theme_constant_override("icon_max_width", 56)
+		button.pressed.connect(signals[toggle_name].emit)
+		row.add_child(button)
+		if not _toggles.has(toggle_name):
+			_toggles[toggle_name] = []
+		_toggles[toggle_name].append(button)
+	return row
 
 
 ## Full-screen layer for a menu; `dim` darkens the game behind it.
@@ -442,12 +462,16 @@ func _button(text: String, icon: Texture2D, colors: Array, min_size: Vector2, fo
 	button.add_theme_constant_override("h_separation", 18)
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		button.add_theme_color_override(state, Color.WHITE)
+	_style_button(button, colors)
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	return button
+
+
+func _style_button(button: Button, colors: Array) -> void:
 	button.add_theme_stylebox_override("normal", _button_style(colors, 10, 0))
 	button.add_theme_stylebox_override("hover", _button_style(colors, 10, 0))
 	button.add_theme_stylebox_override("pressed", _button_style(colors, 3, 7))
 	button.add_theme_stylebox_override("disabled", _button_style([colors[0].darkened(0.2), colors[1].darkened(0.2)], 10, 0))
-	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	return button
 
 
 func _button_style(colors: Array, edge: int, push: int) -> StyleBoxFlat:

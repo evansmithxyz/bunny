@@ -29,11 +29,13 @@ func _ready() -> void:
 	for i in VOICES:
 		var player := AudioStreamPlayer.new()
 		player.volume_db = -6.0
+		player.bus = &"SFX"
 		add_child(player)
 		_players.append(player)
 	# The loop pauses with the game (the other voices keep going for menu clicks).
 	_loop_player = AudioStreamPlayer.new()
 	_loop_player.volume_db = -10.0
+	_loop_player.bus = &"SFX"
 	_loop_player.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_loop_player)
 

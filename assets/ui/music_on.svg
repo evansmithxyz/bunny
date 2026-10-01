@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Two beamed eighth notes -->
+  <path d="M22,14 L52,8 L52,16 L22,22 Z" fill="#fff"/>
+  <rect x="18" y="16" width="6" height="30" rx="2" fill="#fff"/>
+  <rect x="48" y="10" width="6" height="30" rx="2" fill="#fff"/>
+  <ellipse cx="16" cy="47" rx="9" ry="7" fill="#fff" transform="rotate(-20 16 47)"/>
+  <ellipse cx="46" cy="41" rx="9" ry="7" fill="#fff" transform="rotate(-20 46 41)"/>
+</svg>

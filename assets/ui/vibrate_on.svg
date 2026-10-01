@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Phone with shake lines -->
+  <rect x="20" y="8" width="24" height="48" rx="5" fill="#fff"/>
+  <rect x="24" y="14" width="16" height="32" rx="2" fill="#3b9bd6"/>
+  <path d="M12,20 L8,26 L12,32 L8,38 L12,44" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M52,20 L56,26 L52,32 L56,38 L52,44" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

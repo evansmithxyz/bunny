@@ -13,8 +13,14 @@ config_version=5
 config/name="Bunny Hop"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
-config/icon="res://icon.svg"
+config/icon="res://assets/icon/icon_192.png"
+boot_splash/bg_color=Color(0.53, 0.81, 0.98, 1)
+boot_splash/image="res://assets/icon/splash.png"
 config/quit_on_go_back=false
+
+[autoload]
+
+Music="*res://scripts/music.gd"
 
 [display]
 

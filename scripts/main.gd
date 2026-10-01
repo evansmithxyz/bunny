@@ -81,7 +81,9 @@ var combo := 0
 var last_bird_id := 0
 var shake := 0.0
 var best_score := 0
-var muted := false
+var muted := false # Sound effects.
+var music_muted := false
+var vibration := true
 var purple := false # Easter egg skin.
 var state := State.MENU
 var hud: Hud
@@ -98,13 +100,20 @@ func _ready() -> void:
 	best_score = save.get_value("scores", "best", 0)
 	total_carrots = save.get_value("scores", "carrots", 0)
 	muted = save.get_value("settings", "muted", false)
+	music_muted = save.get_value("settings", "music_muted", false)
+	vibration = save.get_value("settings", "vibration", true)
 	purple = save.get_value("settings", "purple", false)
-	AudioServer.set_bus_mute(0, muted)
+	AudioServer.set_bus_mute(AudioServer.get_bus_index(&"SFX"), muted)
+	AudioServer.set_bus_mute(AudioServer.get_bus_index(&"Music"), music_muted)
 
-	sky.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	# In-between colors keep the blend from passing through grey or brown.
+	sky.offsets = PackedFloat32Array([0.0, 0.2, 0.34, 0.5, 0.72, 1.0])
 	sky.colors = PackedColorArray([
 		Color(0.53, 0.81, 0.98), # Day
+		Color(0.7, 0.88, 0.99), # Bright haze
+		Color(1.0, 0.89, 0.66), # Golden hour
 		Color(0.98, 0.62, 0.5), # Sunset
+		Color(0.44, 0.3, 0.55), # Dusk
 		Color(0.06, 0.07, 0.2), # Night
 	])
 
@@ -139,8 +148,10 @@ func _ready() -> void:
 	hud.resume_pressed.connect(_resume)
 	hud.menu_pressed.connect(_go_to_menu)
 	hud.sound_pressed.connect(_toggle_sound)
+	hud.music_pressed.connect(_toggle_music)
+	hud.vibration_pressed.connect(_toggle_vibration)
 	hud.secret_found.connect(_toggle_purple)
-	hud.set_muted(muted)
+	_update_toggles()
 	hud.purple = purple
 
 	_spawn_birds()
@@ -210,6 +221,7 @@ func _check_landing(prev_feet: float) -> void:
 		bunny.bounce()
 		combo = 0
 		sfx.play("thud")
+		_buzz(12, 0.3)
 		return
 	if state == State.MENU:
 		return # On the menu the bunny only hops on the ground.
@@ -253,10 +265,14 @@ func _land_on_bird(bird: Bird) -> void:
 			sfx.play("super")
 			shake = 10.0
 			effects.popup(bunny.position + Vector2(0, -120), "SUPER!", Color(0.5, 1.0, 0.7), 44)
+			_buzz(35, 0.7)
 		"goose":
 			sfx.play("honk")
 			shake = 6.0
 			bunny.knock(bird.direction * GOOSE_KNOCK_SPEED, 0.35)
+			_buzz(50, 0.9)
+		_:
+			_buzz(15, 0.35)
 
 
 func _update_camera() -> void:
@@ -336,6 +352,7 @@ func _collect(pickup: Pickup) -> void:
 		return
 
 	sfx.play("powerup")
+	_buzz(30, 0.6)
 	shake = 5.0
 	effects.popup(bunny.position + Vector2(0, -110), POWERUP_NAMES[pickup.kind], Color(0.6, 0.9, 1.0), 44)
 	match pickup.kind:
@@ -355,6 +372,7 @@ func _bubble_rescue(bottom: float) -> void:
 	bunny.bounce(BUBBLE_RESCUE_BOUNCE)
 	combo = 0
 	sfx.play("pop")
+	_buzz(80, 1.0)
 	sfx.play("super")
 	shake = 10.0
 	effects.feathers(bunny.position, Color(0.75, 0.9, 1.0))
@@ -420,6 +438,7 @@ func _end_game() -> void:
 	bunny.hurt = true
 	bunny.queue_redraw()
 	sfx.play("game_over")
+	_buzz(180, 1.0)
 	shake = 12.0
 	var score := _score()
 	var new_best := score > best_score
@@ -476,10 +495,36 @@ func _go_to_menu() -> void:
 
 func _toggle_sound() -> void:
 	muted = not muted
-	AudioServer.set_bus_mute(0, muted)
-	hud.set_muted(muted)
+	AudioServer.set_bus_mute(AudioServer.get_bus_index(&"SFX"), muted)
 	_save_setting("settings", "muted", muted)
+	_update_toggles()
 	sfx.play("click") # Only heard when turning sound back on.
+
+
+func _toggle_music() -> void:
+	music_muted = not music_muted
+	AudioServer.set_bus_mute(AudioServer.get_bus_index(&"Music"), music_muted)
+	_save_setting("settings", "music_muted", music_muted)
+	_update_toggles()
+	sfx.play("click")
+
+
+func _toggle_vibration() -> void:
+	vibration = not vibration
+	_save_setting("settings", "vibration", vibration)
+	_update_toggles()
+	sfx.play("click")
+	_buzz(40, 0.6) # A little buzz confirms it's back on.
+
+
+func _update_toggles() -> void:
+	hud.set_toggles(not muted, not music_muted, vibration)
+
+
+## Short phone vibration, if the player has vibration turned on.
+func _buzz(milliseconds: int, strength: float) -> void:
+	if vibration:
+		Input.vibrate_handheld(milliseconds, strength)
 
 
 ## Easter egg: tapping the menu title 7 times swaps the brown and purple bunnies.
