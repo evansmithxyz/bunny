@@ -9,6 +9,8 @@ const Effects := preload("res://scripts/effects.gd")
 const Scenery := preload("res://scripts/scenery.gd")
 const Hud := preload("res://scripts/hud.gd")
 const Pickup := preload("res://scripts/pickup.gd")
+const Catalog := preload("res://scripts/catalog.gd")
+const Profile := preload("res://scripts/profile.gd")
 
 enum State { MENU, PLAYING, PAUSED, GAME_OVER }
 
@@ -60,6 +62,7 @@ const POWERUP_GAP_MAX := 3000.0
 const POWERUP_WEIGHTS := {"jetpack": 1.0, "wings": 1.2, "bubble": 1.0}
 const POWERUP_NAMES := {"jetpack": "JETPACK!", "wings": "WINGS!", "bubble": "BUBBLE!"}
 const BUBBLE_RESCUE_BOUNCE := 1.7 # Launch strength when the bubble saves you.
+const MAGNET_SPEED := 900.0 # How fast the carrot magnet pulls carrots in.
 
 var screen_size: Vector2
 var bunny: Bunny
@@ -72,7 +75,6 @@ var birds: Array = []
 var pickups: Array = []
 var next_powerup_y := FIRST_POWERUP_Y
 var carrots_this_run := 0
-var total_carrots := 0
 var carrot_streak := 0 # Pitch of the carrot sound rises along a trail.
 var next_bird_y := -160.0
 var max_height := 0.0
@@ -84,7 +86,7 @@ var best_score := 0
 var muted := false # Sound effects.
 var music_muted := false
 var vibration := true
-var purple := false # Easter egg skin.
+var profile: Profile # Carrots and shop progress.
 var state := State.MENU
 var hud: Hud
 var save := ConfigFile.new()
@@ -98,11 +100,10 @@ func _ready() -> void:
 	screen_size = get_viewport_rect().size
 	save.load(SAVE_PATH) # Missing on first launch; defaults below cover that.
 	best_score = save.get_value("scores", "best", 0)
-	total_carrots = save.get_value("scores", "carrots", 0)
+	profile = Profile.new(save, SAVE_PATH)
 	muted = save.get_value("settings", "muted", false)
 	music_muted = save.get_value("settings", "music_muted", false)
 	vibration = save.get_value("settings", "vibration", true)
-	purple = save.get_value("settings", "purple", false)
 	AudioServer.set_bus_mute(AudioServer.get_bus_index(&"SFX"), muted)
 	AudioServer.set_bus_mute(AudioServer.get_bus_index(&"Music"), music_muted)
 
@@ -135,7 +136,7 @@ func _ready() -> void:
 	bunny.screen_width = screen_size.x
 	bunny.position = Vector2(screen_size.x / 2.0, -Bunny.FEET)
 	bunny.z_index = 1
-	bunny.purple = purple
+
 	add_child(bunny)
 
 	effects = Effects.new()
@@ -151,8 +152,13 @@ func _ready() -> void:
 	hud.music_pressed.connect(_toggle_music)
 	hud.vibration_pressed.connect(_toggle_vibration)
 	hud.secret_found.connect(_toggle_purple)
+	hud.shop_pressed.connect(_open_shop)
+	hud.shop.closed.connect(_close_shop)
+	hud.shop.purchased.connect(_on_purchased)
+	hud.shop.equipped.connect(_on_equipped)
+	hud.shop.denied.connect(sfx.play.bind("click", 0.6))
 	_update_toggles()
-	hud.purple = purple
+	_apply_profile()
 
 	_spawn_birds()
 	scenery.update(0.0, camera.position.y, 0.0)
@@ -163,7 +169,7 @@ func _ready() -> void:
 		_start_game()
 	else:
 		bunny.controls_enabled = false
-		hud.show_menu(best_score, total_carrots)
+		hud.show_menu(best_score, profile.carrots)
 
 
 func _process(delta: float) -> void:
@@ -194,7 +200,7 @@ func _physics_process(delta: float) -> void:
 
 	max_height = maxf(max_height, -bunny.position.y)
 	hud.set_score(_score())
-	hud.set_powerups(bunny.jetpack_time / Bunny.JETPACK_TIME, bunny.wings_time / Bunny.WINGS_TIME, bunny.has_bubble)
+	hud.set_powerups(bunny.jetpack_time / bunny.jetpack_duration, bunny.wings_time / bunny.wings_duration, bunny.has_bubble)
 	if bunny.jetpack_time <= 0.0:
 		sfx.stop_loop()
 	_update_sky()
@@ -328,14 +334,18 @@ func _spawn_pickup(kind: String, at: Vector2) -> void:
 
 func _check_pickups() -> void:
 	var center := bunny.position + Vector2(0, -10) # Middle of the bunny's body.
+	var magnet: float = Catalog.MAGNET_RADIUS[profile.level("magnet")]
+	var delta := get_physics_process_delta_time()
 	for i in range(pickups.size() - 1, -1, -1):
 		var pickup: Pickup = pickups[i]
 		var dx := Bunny.wrapped_dx(center.x, pickup.position.x, screen_size.x)
 		var dy := pickup.position.y - center.y
-		var reach := pickup.radius() + 30.0
-		if dx * dx + dy * dy < reach * reach:
+		var distance := Vector2(dx, dy).length()
+		if distance < pickup.radius() + 30.0:
 			pickups.remove_at(i)
 			_collect(pickup)
+		elif distance < magnet and not pickup.is_powerup():
+			pickup.pull(Vector2(-dx, -dy), MAGNET_SPEED, delta)
 
 
 func _collect(pickup: Pickup) -> void:
@@ -357,10 +367,10 @@ func _collect(pickup: Pickup) -> void:
 	effects.popup(bunny.position + Vector2(0, -110), POWERUP_NAMES[pickup.kind], Color(0.6, 0.9, 1.0), 44)
 	match pickup.kind:
 		"jetpack":
-			bunny.jetpack_time = Bunny.JETPACK_TIME
+			bunny.jetpack_time = bunny.jetpack_duration
 			sfx.start_loop("jetpack")
 		"wings":
-			bunny.wings_time = Bunny.WINGS_TIME
+			bunny.wings_time = bunny.wings_duration
 		"bubble":
 			bunny.has_bubble = true
 
@@ -433,10 +443,9 @@ func _update_sky() -> void:
 func _end_game() -> void:
 	state = State.GAME_OVER
 	sfx.stop_loop()
-	total_carrots += carrots_this_run
-	_save_setting("scores", "carrots", total_carrots)
+	profile.carrots += carrots_this_run
 	bunny.hurt = true
-	bunny.queue_redraw()
+	bunny.redraw()
 	sfx.play("game_over")
 	_buzz(180, 1.0)
 	shake = 12.0
@@ -457,6 +466,8 @@ func _start_game() -> void:
 	hud.set_score(_score())
 	hud.set_carrots(0)
 	hud.show_hint("Tilt to steer!\nLand on birds to climb.", 3.0)
+	if profile.level("bubble_start") > 0:
+		bunny.has_bubble = true # Shop upgrade.
 
 
 func _on_play_pressed() -> void:
@@ -527,12 +538,46 @@ func _buzz(milliseconds: int, strength: float) -> void:
 		Input.vibrate_handheld(milliseconds, strength)
 
 
+# --- Shop ---------------------------------------------------------------------
+
+func _open_shop() -> void:
+	sfx.play("click")
+	hud.show_shop(profile)
+
+
+func _close_shop() -> void:
+	sfx.play("click")
+	hud.show_menu(best_score, profile.carrots)
+
+
+func _on_purchased(_id: String) -> void:
+	sfx.play("powerup")
+	_buzz(30, 0.6)
+	_apply_profile()
+
+
+func _on_equipped() -> void:
+	sfx.play("click")
+	_apply_profile()
+
+
+## Puts the shop choices on the bunny: color, hat, and upgraded power-ups.
+func _apply_profile() -> void:
+	bunny.color = profile.color
+	bunny.hat = profile.hat
+	bunny.redraw()
+	bunny.jetpack_duration = Bunny.JETPACK_TIME + profile.level("jetpack") * Catalog.JETPACK_BONUS_PER_LEVEL
+	bunny.wings_duration = Bunny.WINGS_TIME + profile.level("wings") * Catalog.WINGS_BONUS_PER_LEVEL
+	hud.purple = profile.color == "purple"
+
+
 ## Easter egg: tapping the menu title 7 times swaps the brown and purple bunnies.
 func _toggle_purple() -> void:
-	purple = not purple
-	bunny.purple = purple
-	hud.purple = purple
-	_save_setting("settings", "purple", purple)
+	var purple := profile.color != "purple"
+	if purple:
+		profile.unlock("purple") # Also shows up in the shop from now on.
+	profile.color = "purple" if purple else "brown"
+	_apply_profile()
 	sfx.play("super")
 	var color := Color("b58bf0") if purple else Color("c68645")
 	effects.feathers(bunny.position, color)
@@ -553,7 +598,10 @@ func _notification(what: int) -> void:
 				State.GAME_OVER:
 					_go_to_menu()
 				State.MENU:
-					get_tree().quit()
+					if hud.screen == hud.Screen.SHOP:
+						_close_shop()
+					else:
+						get_tree().quit()
 
 
 func _save_setting(section: String, key: String, value: Variant) -> void:

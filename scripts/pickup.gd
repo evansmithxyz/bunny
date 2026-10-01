@@ -42,6 +42,13 @@ func _process(delta: float) -> void:
 		queue_redraw() # Pulsing glow.
 
 
+## Drifts toward the bunny (carrot magnet). `offset` points from here to it.
+func pull(offset: Vector2, speed: float, delta: float) -> void:
+	var move := offset.normalized() * minf(offset.length(), speed * delta)
+	position.x += move.x
+	_home_y += move.y # position.y follows _home_y (plus the bob) every frame.
+
+
 ## Pops the pickup up and fades it out, then frees it.
 func collect() -> void:
 	_collected = true
