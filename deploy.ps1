@@ -17,6 +17,16 @@ $apk = Join-Path $project "build\bunnyhop.apk"
 $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { Join-Path $env:LOCALAPPDATA "Android\Sdk" }
 $adb = Join-Path $sdk "platform-tools\adb.exe"
 
+## Starts adb's background server as its own detached process. (Started from
+## this script directly, it would inherit the script's output and anything
+## capturing that output would wait for it forever.)
+function Start-AdbServer {
+    # Wait for just this command, not the server it leaves running (-Wait would
+    # wait for that too, forever).
+    $p = Start-Process -FilePath $adb -ArgumentList "start-server" -WindowStyle Hidden -PassThru
+    $p.WaitForExit(15000) | Out-Null
+}
+
 function Fail($message) {
     Write-Host "`n$message" -ForegroundColor Red
     exit 1
@@ -27,7 +37,7 @@ if (-not (Test-Path $adb)) { Fail "adb not found at $adb" }
 
 # 1. Make sure a phone is connected and has allowed USB debugging.
 Write-Host "Checking for phone..." -ForegroundColor Cyan
-cmd /c "`"$adb`" start-server >nul 2>&1"
+Start-AdbServer
 $devices = & $adb devices | Select-Object -Skip 1 | Where-Object { $_.Trim() }
 if (-not $devices) { Fail "No phone found. Plug it in with USB and make sure USB debugging is on." }
 if ($devices -match "unauthorized") { Fail "Phone is connected but not authorized. Unlock it and tap 'Allow' on the USB debugging prompt, then run this again." }
@@ -52,7 +62,7 @@ Write-Host ("  Built {0:N1} MB" -f ((Get-Item $apk).Length / 1MB))
 # 3. Install and launch.
 Write-Host "Installing on phone..." -ForegroundColor Cyan
 # Godot shuts down adb when it exits, so start it again before installing.
-cmd /c "`"$adb`" start-server >nul 2>&1"
+Start-AdbServer
 $result = cmd /c "`"$adb`" install -r `"$apk`" 2>&1" | Out-String
 if ($result -notmatch "Success") { Fail "Install failed:`n$result" }
 & $adb shell am force-stop $Package
