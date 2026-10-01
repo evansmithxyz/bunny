@@ -9,6 +9,7 @@ extends SceneTree
 ##   icon_foreground.png crop these to their own shape, so the bunny stays
 ##   icon_monochrome.png inside the central safe circle.
 ##   splash_icon.png     Android 12+ launch screen icon
+## and store/icon_512.png, the Google Play listing icon.
 ##   splash.png          Godot boot splash (720x1280, like the game's start)
 
 const OUT := "res://assets/icon/"
@@ -31,22 +32,19 @@ func _initialize() -> void:
 	var bunny := _load_image(BUNNY)
 
 	# Adaptive icon layers, 432x432. Visible area is roughly the middle 288px circle.
-	var background := _sky_with_ground(432, 318)
-	var cloud := Image.new()
-	cloud.load_svg_from_string(FileAccess.get_file_as_string(CLOUD), 0.5)
-	background.blend_rect(cloud, Rect2i(Vector2i.ZERO, cloud.get_size()), Vector2i(70, 120))
-	var foreground := Image.create_empty(432, 432, false, Image.FORMAT_RGBA8)
-	_place_bunny(foreground, bunny, 200, Vector2i(216, 330))
+	var layers := _icon_layers(bunny, 432)
+	_save(layers[0], "icon_background.png")
+	_save(layers[1], "icon_foreground.png")
 	var monochrome := Image.create_empty(432, 432, false, Image.FORMAT_RGBA8)
 	_place_bunny(monochrome, _silhouette(bunny), 200, Vector2i(216, 330))
-	_save(background, "icon_background.png")
-	_save(foreground, "icon_foreground.png")
 	_save(monochrome, "icon_monochrome.png")
 
 	# Full icon = background + foreground, used for the classic icon and splash icon.
-	var full := background.duplicate()
-	full.blend_rect(foreground, Rect2i(0, 0, 432, 432), Vector2i.ZERO)
+	var full := _flatten(layers)
 	_save(full, "splash_icon.png")
+	# Store icon goes to store/ (ignored by Godot) so it isn't packed into the game.
+	var store_icon := _flatten(_icon_layers(bunny, 512)) # Drawn at size, not upscaled.
+	print("store/icon_512.png: ", error_string(store_icon.save_png("res://store/icon_512.png")))
 	var classic := full.duplicate()
 	classic.resize(192, 192, Image.INTERPOLATE_LANCZOS)
 	_round_corners(classic, 36)
@@ -54,6 +52,24 @@ func _initialize() -> void:
 
 	_build_splash_scene(bunny)
 	process_frame.connect(_capture_splash)
+
+
+## [background, foreground] icon layers at `size` pixels (the design is 432).
+func _icon_layers(bunny: Image, size: int) -> Array[Image]:
+	var s := size / 432.0
+	var background := _sky_with_ground(size, int(318 * s))
+	var cloud := Image.new()
+	cloud.load_svg_from_string(FileAccess.get_file_as_string(CLOUD), 0.5 * s)
+	background.blend_rect(cloud, Rect2i(Vector2i.ZERO, cloud.get_size()), Vector2i(int(70 * s), int(120 * s)))
+	var foreground := Image.create_empty(size, size, false, Image.FORMAT_RGBA8)
+	_place_bunny(foreground, bunny, int(200 * s), Vector2i(size / 2, int(330 * s)))
+	return [background, foreground]
+
+
+func _flatten(layers: Array[Image]) -> Image:
+	var img := layers[0].duplicate()
+	img.blend_rect(layers[1], Rect2i(Vector2i.ZERO, layers[1].get_size()), Vector2i.ZERO)
+	return img
 
 
 func _capture_splash() -> void:

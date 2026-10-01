@@ -7,3 +7,7 @@
 /build/
 *.apk
 *.aab
+
+# Signing keys - keep these out of git and back them up somewhere safe
+*.keystore
+*.jks
