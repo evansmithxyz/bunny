@@ -45,8 +45,33 @@ Commit `export_presets.cfg` afterwards so the version number is saved.
 - Text: copy from `docs/store_listing.md`.
 - App icon: `store/icon_512.png`
 - Feature graphic: `store/feature_graphic.png`
-- Phone screenshots: `store/screenshot_1.png` to `screenshot_4.png`
+- Phone screenshots: `store/screenshot_1.png` to `screenshot_6.png`, uploaded in that order
 - Regenerate the art any time: `C:\Godot\Godot_v4.7.2-stable_win64_console.exe --path . --audio-driver Dummy --script tools/make_store_art.gd`
+
+#### AI asset declaration
+
+After you upload the graphics and click **Next**, Play Console shows an **AI asset declaration** step. Select **Don't label assets**, and check it's still selected before you click **Save**. (The step may look different from this description, which comes from a guide dated August 2026. The choice is the same: don't apply the AI label.)
+
+Why: Google asks you to label only the assets you judge to be covered by AI-labelling regulations ([help page](https://support.google.com/googleplay/android-developer/answer/17262077)). It doesn't name them. The ones it most likely means are the EU AI Act (Article 50) and the rules in India and New York that Google names for its ads products. They cover realistic content that could pass as real, such as deepfakes and human-like AI performers. Bunny Hop's store images are cartoon scenes built from the real game, so they are out of scope.
+
+"Don't label assets" is a judgement about scope, not a claim that no AI was used. Labelling would also be truthful. It puts an AI mark on the images, which Google has so far documented only for phone users in the EU.
+
+How the store images were made, as a record in case Google asks:
+
+- **Screenshots 1 to 6:** staged scenes rendered by the game engine from the real game by `tools/make_store_art.gd`, with a caption banner added.
+- **Feature graphic:** key art composed by the same script from the game's own sprites.
+- **Icon:** composed by `tools/make_icons.gd`.
+- **Human-made art in them:** the bunny, carrots, jetpack, wings, bubble, grass, mushrooms and hills, from the Kenney Jumper Pack (CC0), plus the engine's default font.
+- **AI-written parts:** the birds, clouds, hats, planet, UFO, satellite and the other art in `assets/art` and `assets/ui`, the captions, and both scripts were written as code by an AI assistant (Claude). No image-generation model was used.
+- Nothing is photorealistic or shows real people, places or events.
+
+Check again if any of these happen:
+
+- Google defines "AI-generated or edited", or shows the label outside the EU.
+- South Korea's proposed rule for people who post AI-generated images becomes law (it had not as of 30 September 2026).
+- You add realistic AI-made images, or a promo video. YouTube asks its own disclosure question at upload; animated content is exempt.
+
+Checked on 3 October 2026. This is research, not legal advice.
 
 ### Privacy policy
 
@@ -64,7 +89,7 @@ Play Console needs a web address for it. The text is ready in `docs/privacy_poli
 | Ads | **No**, the app does not contain ads |
 | App access | All functionality is available without special access |
 | Content rating | Fill in the IARC questionnaire: category **Game**; no violence, fear, sexuality, gambling, language or drugs; no user interaction or chat; no sharing of location; no purchases. It should come out as Everyone / PEGI 3. |
-| Target audience | Choose the age groups you intend. Picking **13+ only** is simplest. Including under-13s puts the app in Google's Families program, which has extra rules (the game already meets the main ones: no ads, no data collection), so it's an option if you want kids to play. |
+| Target audience | Include the under-13 age groups. Google treats cartoon animals as appealing to children, so a cute bunny game listed as **13+ only** is likely to be questioned in review. Including children puts the app under Google's Families policy, which Bunny Hop already meets: no ads, no data collection, no internet permission, no outside links, and a privacy policy with a section on children. If you still choose 13+ only, answer **Yes** to "Could your store listing unintentionally appeal to children?" and expect a closer review. |
 | Data safety | **No** data collected, **no** data shared. (The accelerometer is only used on the device while playing.) |
 | Government apps / financial features / health | Not applicable |
 
