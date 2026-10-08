@@ -54,13 +54,19 @@ if (Test-Path $out) { Remove-Item $out }
 $godotArgs = @("--headless", "--path", $project)
 if (-not (Test-Path (Join-Path $project "android\build"))) { $godotArgs += "--install-android-build-template" }
 $godotArgs += @("--export-release", "Android Release", $out)
+# Gradle normally leaves a background helper (its "daemon") running for hours
+# after a build. Godot's console program waits for every process it started,
+# so this script would sit here until that helper quit. Turn the helper off.
+$oldGradleOpts = $env:GRADLE_OPTS
 try {
+    $env:GRADLE_OPTS = "$oldGradleOpts -Dorg.gradle.daemon=false".Trim()
     $env:GODOT_ANDROID_KEYSTORE_RELEASE_PATH = $Keystore
     $env:GODOT_ANDROID_KEYSTORE_RELEASE_USER = $Alias
     $env:GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
     Write-Host "Exporting (the Gradle build takes a minute or two)..."
     & $Godot @godotArgs *> $log
 } finally {
+    $env:GRADLE_OPTS = $oldGradleOpts
     Remove-Item Env:GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD -ErrorAction SilentlyContinue
     [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
 }

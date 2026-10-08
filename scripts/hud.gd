@@ -13,6 +13,7 @@ signal vibration_pressed
 signal shop_pressed
 signal tilt_pressed
 signal secret_found # Title tapped SECRET_TAPS times in a row.
+signal test_start_pressed # Testing shortcut on the menu (debug builds only).
 
 const ICON_PLAY := preload("res://assets/ui/play.svg")
 const ICON_PAUSE := preload("res://assets/ui/pause.svg")
@@ -83,6 +84,7 @@ var _toast: Label
 var _toast_id := 0
 var _title_taps := 0
 var _last_tap_ms := 0
+var _test_start: Button
 
 
 func _ready() -> void:
@@ -131,12 +133,14 @@ func show_paused() -> void:
 	_show_only(_paused)
 
 
-func show_game_over(score: int, best: int, new_best: bool, carrots: int) -> void:
+func show_game_over(score: int, best: int, new_best: bool, carrots: int, test_run: bool = false) -> void:
 	screen = Screen.GAME_OVER
 	_final_score.text = str(score)
 	_final_carrots.visible = carrots > 0
 	_final_carrots.get_child(1).text = "+%d" % carrots
 	_final_best.text = "New best!" if new_best else "Best: %d" % best
+	if test_run: # Started part-way up with the testing shortcut.
+		_final_best.text = "Test run: not saved"
 	_final_best.add_theme_color_override("font_color", ORANGE[1] if new_best else INK)
 	_show_only(_game_over)
 	for button in _game_over_buttons:
@@ -192,6 +196,13 @@ func set_toggles(sound: bool, music: bool, vibration: bool) -> void:
 		for button: Button in _toggles[toggle_name]:
 			button.icon = TOGGLE_ICONS[toggle_name][0 if on[toggle_name] else 1]
 			UI.style_button(button, BLUE if on[toggle_name] else GREY)
+
+
+## Shows the testing shortcut button on the menu, saying where runs start.
+func set_test_start(place: String) -> void:
+	_test_start.text = "Start: " + place
+	_test_start.reset_size() # Shrink back to fit a shorter name.
+	_test_start.visible = true
 
 
 ## Shows a message in the middle of the screen for a few seconds.
@@ -378,6 +389,18 @@ func _build_menu() -> void:
 	_menu_tip = UI.label(TIPS.tilt, 30, Color.WHITE, true)
 	box.add_child(UI.spacer(10))
 	box.add_child(_menu_tip)
+
+	# Testing shortcut, hidden unless set_test_start() shows it: tucked into the
+	# bottom-left corner, over the dirt and clear of the bunny.
+	_test_start = UI.button("", null, UI.GREEN, Vector2(0, 72), 30)
+	_test_start.anchor_top = 1.0
+	_test_start.anchor_bottom = 1.0
+	_test_start.offset_left = 24.0
+	_test_start.offset_top = -112.0
+	_test_start.offset_bottom = -40.0
+	_test_start.visible = false
+	_test_start.pressed.connect(test_start_pressed.emit)
+	_menu.add_child(_test_start)
 
 
 func _build_paused() -> void:

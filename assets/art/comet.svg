@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="370" height="128" viewBox="-310 -64 370 128">
+  <!-- Faces right. (0,0) is the center of the icy head (radius 44, the bunny lands on top of it); the tail streams out behind. -->
+  <defs>
+    <clipPath id="head"><circle cx="0" cy="0" r="44"/></clipPath>
+  </defs>
+  <!-- Tail: three streaks, widest and faintest at the back. The outer one wraps
+       round the front of the head so it blends into the glow without a seam. -->
+  <path d="M0,-54 C-80,-54 -190,-24 -306,0 C-190,24 -80,54 0,54 A54,54 0 0,0 0,-54 Z" fill="#6db4ff" opacity="0.4"/>
+  <path d="M0,-42 C-60,-42 -150,-16 -246,0 C-150,16 -60,42 0,42 Z" fill="#a9dcff" opacity="0.6"/>
+  <path d="M0,-28 C-40,-26 -100,-9 -176,0 C-100,9 -40,26 0,28 Z" fill="#ffffff" opacity="0.85"/>
+  <!-- Sparks shed along the tail -->
+  <g fill="#ffffff">
+    <circle cx="-96" cy="-40" r="4" opacity="0.85"/>
+    <circle cx="-150" cy="34" r="3.5" opacity="0.8"/>
+    <circle cx="-214" cy="-22" r="3" opacity="0.7"/>
+    <circle cx="-262" cy="14" r="2.5" opacity="0.6"/>
+    <circle cx="-64" cy="50" r="3" opacity="0.7"/>
+  </g>
+  <!-- Glow around the head -->
+  <circle cx="0" cy="0" r="54" fill="#9fd4ff" opacity="0.3"/>
+  <!-- Icy head: shaded lower-right, lit upper-left -->
+  <circle cx="0" cy="0" r="44" fill="#8fc0ea"/>
+  <g clip-path="url(#head)">
+    <circle cx="-9" cy="-9" r="44" fill="#d8efff"/>
+    <!-- Ice patches -->
+    <ellipse cx="12" cy="-14" rx="11" ry="8" fill="#b4d9f5"/>
+    <ellipse cx="-14" cy="16" rx="9" ry="7" fill="#b4d9f5"/>
+    <ellipse cx="22" cy="18" rx="6" ry="5" fill="#a3cdf0"/>
+    <!-- Soft highlight -->
+    <ellipse cx="-20" cy="-22" rx="15" ry="7" transform="rotate(-40 -20 -22)" fill="#fff" opacity="0.75"/>
+    <circle cx="-33" cy="-5" r="3" fill="#fff" opacity="0.6"/>
+  </g>
+</svg>

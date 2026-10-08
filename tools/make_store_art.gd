@@ -140,6 +140,7 @@ func _load_game(save: Dictionary) -> void:
 	_write_save(save)
 	main = load("res://scenes/main.tscn").instantiate()
 	game_view.add_child(main)
+	main.hud._test_start.visible = false # The testing shortcut doesn't belong in store art.
 
 
 func _start_playing() -> void:
