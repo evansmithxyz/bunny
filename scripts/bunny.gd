@@ -45,8 +45,8 @@ const HEAD_TOP := {"stand": -76.0, "ready": -71.0, "jump": -66.0, "hurt": -67.0}
 const HAT_SINK := 5.0 # Hats sit a little down onto the head.
 
 # Power-ups (Kenney art). Gear blinks during its last second as a warning.
-const JETPACK_TIME := 2.5 # Before shop upgrades.
-const JETPACK_SPEED := 1500.0 # Straight up while it's firing.
+const JETPACK_TIME := 2.0 # Before shop upgrades.
+const JETPACK_SPEED := 1200.0 # Straight up while it's firing.
 const WINGS_TIME := 6.0 # Before shop upgrades.
 const WINGS_MAX_FALL := 260.0 # Gliding: falls no faster than this.
 const TEX_JETPACK := preload("res://assets/kenney/jetpack.png")
