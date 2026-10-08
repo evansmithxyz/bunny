@@ -30,6 +30,8 @@ func _ready() -> void:
 	_sounds["screech"] = _screech()
 	_sounds["warble"] = _wobble(560.0, 760.0, 0.4, 16.0, 90.0, 0.35)
 	_sounds["beep"] = _arpeggio([1400.0, 0.0, 1400.0], 0.05, 0.22)
+	_sounds["zap"] = _wobble(1700.0, 320.0, 0.2, 45.0, 160.0, 0.3)
+	_sounds["crumble"] = _crumble()
 	_sounds["spring"] = _wobble(260.0, 780.0, 0.28, 22.0, 40.0, 0.45)
 	_sounds["slow_down"] = _sweep(760.0, 180.0, 0.5, 0.4)
 	_sounds["speed_up"] = _sweep(180.0, 760.0, 0.4, 0.4)
@@ -134,6 +136,20 @@ func _pop() -> AudioStreamWAV:
 		phase += TAU * lerpf(400.0, 1600.0, t) / MIX_RATE
 		var noise := randf_range(-1.0, 1.0) * maxf(1.0 - t * 6.0, 0.0)
 		samples.append((sin(phase) * 0.6 + noise * 0.5) * 0.45 * _envelope(t))
+	return _to_wav(samples)
+
+
+## Short low rattle of noise over a thump, like rock breaking apart.
+func _crumble() -> AudioStreamWAV:
+	var samples := PackedFloat32Array()
+	var phase := 0.0
+	var smooth := 0.0
+	var count := int(0.3 * MIX_RATE)
+	for i in count:
+		var t := float(i) / count
+		phase += TAU * lerpf(150.0, 70.0, t) / MIX_RATE
+		smooth = lerpf(smooth, randf_range(-1.0, 1.0), 0.3) # Low-pass the noise.
+		samples.append((smooth * 0.9 + sin(phase) * 0.4) * 0.6 * _envelope(t))
 	return _to_wav(samples)
 
 

@@ -71,10 +71,10 @@ const SLOWMO_TIME := 5.0 # Real-world seconds.
 const SLOWMO_SCALE := 0.5 # Game speed during slow motion.
 
 # Higher up (altitude = pixels climbed): owls at night, then space, where birds
-# give way to UFOs and satellites.
+# give way to UFOs and satellites, then asteroids, comets and other trouble.
 const NIGHT_START := 15000.0
 const SPACE_START := 24000.0
-const SPACE_FULL := 30000.0 # Sky fully space-black by here.
+const SPACE_FULL := 30000.0 # Sky fully space-black, and space at its trickiest, by here.
 const SPACE_SKY := Color(0.02, 0.01, 0.06)
 const EAGLE_START := 0.3 # Difficulty.
 # Swallows sometimes come as a V-shaped flock you can hop along. Offsets are
@@ -84,6 +84,10 @@ const FLOCK_CHANCE := 0.08
 const FLOCK_OFFSETS := [Vector2(0, 0), Vector2(-56, -26), Vector2(-56, 26), Vector2(-112, -52), Vector2(-112, 52)]
 const FLOCK_EXTRA_GAP := 52.0 # Leave room above the flock's top bird.
 const BEST_MARKER_MIN := 400.0 # Show the best-height line once the record is this high.
+
+# Testing shortcut, in debug builds only (so never in a store release): a menu
+# button picks where runs start. A run that skips ahead isn't saved.
+const TEST_STARTS := [["Ground", 0.0], ["Space", SPACE_START], ["Deep space", SPACE_FULL]]
 
 var screen_size: Vector2
 var bunny: Bunny
@@ -114,6 +118,8 @@ var best_height := 0.0 # Highest climb ever (pixels), for the marker in the sky.
 var best_marker: BestMarker
 var passed_best := false
 var reached_space := false
+var test_start := 0 # Which of TEST_STARTS runs begin at.
+var test_run := false # This run skipped ahead, so nothing from it is saved.
 var slowmo_left := 0.0 # Real seconds of slow motion left.
 var profile: Profile # Carrots and shop progress.
 var state := State.MENU
@@ -201,6 +207,10 @@ func _ready() -> void:
 	hud.tilt_screen.center_set.connect(_on_tilt_center_set)
 	hud.tilt_screen.sensitivity_changed.connect(_on_tilt_sensitivity_changed)
 	hud.tilt_screen.mode_changed.connect(_on_control_mode_changed)
+	if OS.is_debug_build():
+		test_start = clampi(save.get_value("settings", "test_start", 0), 0, TEST_STARTS.size() - 1)
+		hud.test_start_pressed.connect(_cycle_test_start)
+		hud.set_test_start(TEST_STARTS[test_start][0])
 	_update_toggles()
 	_apply_profile()
 	_apply_tilt()
@@ -309,7 +319,10 @@ func _land_on_bird(bird: Bird) -> void:
 	bunny.bounce(multiplier)
 	bird.hit()
 	carrot_streak = 0
-	effects.feathers(Vector2(bunny.position.x, bird.top_y()), bird.feather_color)
+	if bird.kind == "asteroid":
+		effects.rubble(bird.position, bird.feather_color)
+	else:
+		effects.feathers(Vector2(bunny.position.x, bird.top_y()), bird.feather_color)
 
 	# Combo: different birds in a row.
 	if bird.get_instance_id() == last_bird_id:
@@ -327,7 +340,7 @@ func _land_on_bird(bird: Bird) -> void:
 
 	# Boing rises in pitch as the combo grows.
 	sfx.play("boing", 1.0 + 0.04 * mini(combo, 15))
-	if not bird.kind in ["ufo", "satellite"]:
+	if not bird.kind in Bird.SPACE_KINDS:
 		sfx.play("chirp", randf_range(0.9, 1.15))
 	if sprung:
 		sfx.play("spring")
@@ -352,12 +365,21 @@ func _land_on_bird(bird: Bird) -> void:
 		"owl":
 			sfx.play("hoot")
 			_buzz(15, 0.35)
-		"ufo":
+		"ufo", "warp_ufo":
 			sfx.play("warble")
 			_buzz(20, 0.4)
-		"satellite":
+		"satellite", "tumbler":
 			sfx.play("beep")
 			_buzz(15, 0.35)
+		"asteroid":
+			sfx.play("crumble")
+			shake = 5.0
+			_buzz(30, 0.6)
+		"comet":
+			sfx.play("super")
+			shake = 10.0
+			effects.popup(bunny.position + Vector2(0, -120), "ZOOM!", Color(0.7, 0.9, 1.0), 44)
+			_buzz(35, 0.7)
 		_:
 			_buzz(15, 0.35)
 
@@ -412,6 +434,8 @@ func _spawn_bird(y: float, kind: String = "") -> Bird:
 		bird.position = Vector2(randf_range(0.0, screen_size.x), y)
 	if bird.kind == "crow":
 		bird.dove.connect(sfx.play.bind("caw"))
+	elif bird.kind == "warp_ufo":
+		bird.warped.connect(sfx.play.bind("zap"))
 	add_child(bird)
 	birds.append(bird)
 
@@ -528,7 +552,16 @@ func _bubble_rescue(bottom: float) -> void:
 ## A random bird kind for difficulty `d` at `altitude` (pixels climbed).
 func _pick_bird_kind(d: float, altitude: float) -> String:
 	if altitude >= SPACE_START:
-		return _pick_weighted({"ufo": 1.0, "satellite": 0.6})
+		# Mostly plain UFOs and satellites at first; the tricky ones build up deeper in.
+		var deep := smoothstep(SPACE_START, SPACE_FULL, altitude)
+		return _pick_weighted({
+			"ufo": 1.0,
+			"satellite": lerpf(0.6, 0.3, deep),
+			"tumbler": lerpf(0.15, 0.45, deep),
+			"warp_ufo": lerpf(0.15, 0.45, deep),
+			"asteroid": lerpf(0.2, 0.55, deep),
+			"comet": 0.2,
+		})
 	var weights := {
 		"sparrow": 1.0,
 		"pigeon": lerpf(0.6, 0.15, d),
@@ -588,16 +621,19 @@ func _end_game() -> void:
 	state = State.GAME_OVER
 	_end_slowmo(false)
 	sfx.stop_loop()
-	if max_height > best_height:
-		best_height = max_height
-		_save_setting("scores", "best_height", best_height)
-	profile.carrots += carrots_this_run
 	bunny.hurt = true
 	bunny.redraw()
 	sfx.play("game_over")
 	_buzz(180, 1.0)
 	shake = 12.0
 	var score := _score()
+	if test_run: # Skipped ahead: no records or carrots from this run.
+		hud.show_game_over(score, best_score, false, 0, true)
+		return
+	if max_height > best_height:
+		best_height = max_height
+		_save_setting("scores", "best_height", best_height)
+	profile.carrots += carrots_this_run
 	var new_best := score > best_score
 	if new_best:
 		best_score = score
@@ -618,6 +654,32 @@ func _start_game() -> void:
 	hud.show_hint(steer_hint + "\nLand on birds to climb.", 3.0)
 	if profile.level("bubble_start") > 0:
 		bunny.has_bubble = true # Shop upgrade.
+	if TEST_STARTS[test_start][1] > 0.0:
+		_skip_to(TEST_STARTS[test_start][1])
+
+
+## Testing shortcut: moves the run up to `height`, above a satellite to start from.
+func _skip_to(height: float) -> void:
+	test_run = true
+	for list: Array in [birds, pickups]:
+		for node: Node in list:
+			node.queue_free()
+		list.clear()
+	max_height = height
+	passed_best = true # No "New best height!" for getting here this way.
+	next_powerup_y = -height + FIRST_POWERUP_Y
+	bunny.position = Vector2(screen_size.x / 2.0, -height - 60.0 - Bunny.FEET)
+	bunny.velocity = Vector2.ZERO
+	_update_camera()
+	_spawn_bird(-height, "satellite").position.x = bunny.position.x
+	next_bird_y = -height - 200.0
+
+
+func _cycle_test_start() -> void:
+	sfx.play("click")
+	test_start = (test_start + 1) % TEST_STARTS.size()
+	_save_setting("settings", "test_start", test_start)
+	hud.set_test_start(TEST_STARTS[test_start][0])
 
 
 func _on_play_pressed() -> void:

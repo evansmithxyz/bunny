@@ -3,6 +3,7 @@ extends Node2D
 
 const FEATHER := preload("res://assets/art/feather.svg")
 const PUFF := preload("res://assets/kenney/smoke.png")
+const ROCK := preload("res://assets/art/rock_chunk.svg")
 
 # Multiplied with each particle's color, so white keeps the color and just fades it.
 var _fade_out := _make_fade_out()
@@ -38,6 +39,25 @@ func dust(at: Vector2) -> void:
 	p.scale_amount_max = 0.7
 	p.color = Color(1.0, 0.95, 0.85)
 	p.color_ramp = _fade_out
+
+
+## An asteroid breaking apart: chunks fly out every way and fall, in a puff of dust.
+func rubble(at: Vector2, color: Color) -> void:
+	var p := _burst(at, 12, 0.8)
+	p.spread = 180.0
+	p.initial_velocity_min = 120.0
+	p.initial_velocity_max = 340.0
+	p.gravity = Vector2(0, 700)
+	p.angular_velocity_min = -540.0
+	p.angular_velocity_max = 540.0
+	p.texture = ROCK
+	p.angle_min = -180.0
+	p.angle_max = 180.0
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.4
+	p.color = color
+	p.color_ramp = _fade_out
+	dust(at)
 
 
 ## Text that floats up and fades away, e.g. "Combo x3".
